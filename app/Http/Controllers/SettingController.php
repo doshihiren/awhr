@@ -52,11 +52,16 @@ class SettingController extends Controller
             'phone' => ['nullable', 'string', 'max:20'],
             'gstin' => ['nullable', 'string', 'max:20'],
             'pan' => ['nullable', 'string', 'max:20'],
+            'office_start_time' => ['nullable', 'date_format:H:i'],
+            'late_grace_minutes' => ['nullable', 'integer', 'min:0', 'max:180'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'signature' => ['nullable', 'image', 'max:2048'],
             'payslip_header' => ['nullable', 'string', 'max:255'],
         ]);
 
+        if (!empty($validated['office_start_time'])) {
+            $validated['office_start_time'] = $validated['office_start_time'] . ':00';
+        }
         if ($request->hasFile('logo')) {
             $filename = 'logo_' . time() . '.' . $request->file('logo')->extension();
             $request->file('logo')->move(public_path('uploads/logos'), $filename);

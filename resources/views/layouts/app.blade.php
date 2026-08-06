@@ -160,48 +160,73 @@
             <span>Payroll Management</span>
         </div>
         <nav class="nav flex-column py-2">
-            <div class="nav-section">Main</div>
-            <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                <i class="bi bi-grid-1x2"></i> Dashboard
-            </a>
+            @if(Auth::user()->role === 'employee')
+                <div class="nav-section">My Portal</div>
+                <a class="nav-link {{ request()->routeIs('portal.dashboard') ? 'active' : '' }}" href="{{ route('portal.dashboard') }}">
+                    <i class="bi bi-grid-1x2"></i> Dashboard
+                </a>
+                <a class="nav-link {{ request()->routeIs('portal.attendance') ? 'active' : '' }}" href="{{ route('portal.attendance') }}">
+                    <i class="bi bi-calendar-check"></i> My Attendance
+                </a>
+                <a class="nav-link {{ request()->routeIs('portal.leaves') ? 'active' : '' }}" href="{{ route('portal.leaves') }}">
+                    <i class="bi bi-calendar2-heart"></i> My Leaves
+                </a>
+                <a class="nav-link {{ request()->routeIs('portal.payslips*') ? 'active' : '' }}" href="{{ route('portal.payslips') }}">
+                    <i class="bi bi-file-earmark-pdf"></i> Payslips
+                </a>
+            @else
+                <div class="nav-section">Main</div>
+                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
+                    <i class="bi bi-grid-1x2"></i> Dashboard
+                </a>
 
-            <div class="nav-section">HR Master</div>
-            <a class="nav-link {{ request()->routeIs('employees.*') ? 'active' : '' }}" href="{{ route('employees.index') }}">
-                <i class="bi bi-people"></i> Employees
-            </a>
-            <a class="nav-link {{ request()->routeIs('attendance.*') ? 'active' : '' }}" href="{{ route('attendance.index') }}">
-                <i class="bi bi-calendar-check"></i> Attendance
-            </a>
-            <a class="nav-link {{ request()->routeIs('leaves.*') ? 'active' : '' }}" href="{{ route('leaves.index') }}">
-                <i class="bi bi-calendar2-heart"></i> Leave Management
-            </a>
+                <div class="nav-section">HR Master</div>
+                <a class="nav-link {{ request()->routeIs('employees.*') ? 'active' : '' }}" href="{{ route('employees.index') }}">
+                    <i class="bi bi-people"></i> Employees
+                </a>
+                <a class="nav-link {{ request()->routeIs('employee-accounts.*') ? 'active' : '' }}" href="{{ route('employee-accounts.index') }}">
+                    <i class="bi bi-person-badge"></i> Employee Logins
+                </a>
+                <a class="nav-link {{ request()->routeIs('attendance.index') || request()->routeIs('attendance.edit') ? 'active' : '' }}" href="{{ route('attendance.index') }}">
+                    <i class="bi bi-calendar-check"></i> Monthly Attendance
+                </a>
+                <a class="nav-link {{ request()->routeIs('attendance.daily') ? 'active' : '' }}" href="{{ route('attendance.daily') }}">
+                    <i class="bi bi-clock-history"></i> Daily Attendance
+                </a>
+                <a class="nav-link {{ request()->routeIs('attendance.import*') || request()->routeIs('attendance.template*') ? 'active' : '' }}" href="{{ route('attendance.import') }}">
+                    <i class="bi bi-upload"></i> Import Attendance
+                </a>
+                <a class="nav-link {{ request()->routeIs('leaves.*') ? 'active' : '' }}" href="{{ route('leaves.index') }}">
+                    <i class="bi bi-calendar2-heart"></i> Leave Management
+                </a>
 
-            <div class="nav-section">Payroll</div>
-            <a class="nav-link {{ request()->routeIs('payroll.*') ? 'active' : '' }}" href="{{ route('payroll.index') }}">
-                <i class="bi bi-cash-stack"></i> Payroll Processing
-            </a>
-            <a class="nav-link {{ request()->routeIs('bank-transfer.*') ? 'active' : '' }}" href="{{ route('bank-transfer.index') }}">
-                <i class="bi bi-bank"></i> Bank Transfer
-            </a>
-            <a class="nav-link {{ request()->routeIs('form16.*') ? 'active' : '' }}" href="{{ route('form16.index') }}">
-                <i class="bi bi-file-earmark-text"></i> Form 16
-            </a>
+                <div class="nav-section">Payroll</div>
+                <a class="nav-link {{ request()->routeIs('payroll.*') ? 'active' : '' }}" href="{{ route('payroll.index') }}">
+                    <i class="bi bi-cash-stack"></i> Payroll Processing
+                </a>
+                <a class="nav-link {{ request()->routeIs('bank-transfer.*') ? 'active' : '' }}" href="{{ route('bank-transfer.index') }}">
+                    <i class="bi bi-bank"></i> Bank Transfer
+                </a>
+                <a class="nav-link {{ request()->routeIs('form16.*') ? 'active' : '' }}" href="{{ route('form16.index') }}">
+                    <i class="bi bi-file-earmark-text"></i> Form 16
+                </a>
 
-            <div class="nav-section">Reports</div>
-            <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
-                <i class="bi bi-bar-chart-line"></i> Reports
-            </a>
+                <div class="nav-section">Reports</div>
+                <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
+                    <i class="bi bi-bar-chart-line"></i> Reports
+                </a>
 
-            <div class="nav-section">System</div>
-            <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
-                <i class="bi bi-gear"></i> Settings
-            </a>
-            <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
-                <i class="bi bi-person-gear"></i> Users
-            </a>
-            <a class="nav-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }}" href="{{ route('audit-logs.index') }}">
-                <i class="bi bi-journal-text"></i> Audit Logs
-            </a>
+                <div class="nav-section">System</div>
+                <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
+                    <i class="bi bi-gear"></i> Settings
+                </a>
+                <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
+                    <i class="bi bi-person-gear"></i> Users
+                </a>
+                <a class="nav-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }}" href="{{ route('audit-logs.index') }}">
+                    <i class="bi bi-journal-text"></i> Audit Logs
+                </a>
+            @endif
         </nav>
     </aside>
 

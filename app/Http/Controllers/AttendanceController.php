@@ -46,6 +46,7 @@ class AttendanceController extends Controller
 
         $data['lop_days'] = $data['lop_days'] ?? max(0, $data['working_days'] - $data['present_days']);
         $data['overtime_days'] = $data['overtime_days'] ?? 0;
+        $data['late_days'] = $data['late_days'] ?? 0;
         $data['created_by'] = Auth::id();
 
         $attendance = Attendance::updateOrCreate(

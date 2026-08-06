@@ -169,8 +169,13 @@ class DatabaseSeeder extends Seeder
 
             $leaveService->ensureBalance($employee, $fy);
             $leaveService->adjustBalance($employee, 3, 0, 0, 'Opening balance seed', $fy);
+
+            // Create employee portal login: Emp@{code}
+            app(\App\Services\EmployeeAccountService::class)->ensureLogin($employee);
         }
 
-        $this->command?->info('AWHR seeded. Login: admin@awhr.local / password');
+        $this->command?->info('AWHR seeded.');
+        $this->command?->info('Admin: admin@awhr.local / password');
+        $this->command?->info('Employees: {email} / Emp@{employee_code}  e.g. rahul@awhr.local / Emp@EMP001');
     }
 }

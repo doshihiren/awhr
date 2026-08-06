@@ -9,7 +9,7 @@ class Attendance extends Model
 {
     protected $fillable = [
         'employee_id', 'month', 'year', 'working_days', 'present_days',
-        'lop_days', 'overtime_days', 'remarks', 'created_by',
+        'lop_days', 'overtime_days', 'late_days', 'remarks', 'created_by',
     ];
 
     public function employee(): BelongsTo

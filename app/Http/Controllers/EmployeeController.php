@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\SalaryStructure;
 use App\Repositories\EmployeeRepository;
 use App\Services\AuditLogService;
+use App\Services\EmployeeAccountService;
 use App\Services\LeaveService;
 use App\Services\SalaryCalculationService;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +24,8 @@ class EmployeeController extends Controller
         protected EmployeeRepository $employeeRepository,
         protected SalaryCalculationService $salaryCalculationService,
         protected LeaveService $leaveService,
-        protected AuditLogService $auditLogService
+        protected AuditLogService $auditLogService,
+        protected EmployeeAccountService $employeeAccountService
     ) {}
 
     public function index(Request $request): View
@@ -90,7 +92,17 @@ class EmployeeController extends Controller
             return $employee;
         });
 
-        return redirect()->route('employees.show', $employee)->with('success', 'Employee created successfully.');
+        $loginMsg = '';
+        if ($employee->email) {
+            try {
+                $login = $this->employeeAccountService->ensureLogin($employee);
+                $loginMsg = " Login created — Email: {$employee->email} | Password: {$login['password']}";
+            } catch (\Throwable $e) {
+                $loginMsg = ' (Login not created: ' . $e->getMessage() . ')';
+            }
+        }
+
+        return redirect()->route('employees.show', $employee)->with('success', 'Employee created successfully.' . $loginMsg);
     }
 
     public function show(Employee $employee): View

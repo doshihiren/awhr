@@ -14,11 +14,11 @@
         <div class="panel">
             <div class="panel-header"><span><i class="bi bi-file-earmark-text me-2"></i>Statement Selection</span></div>
             <div class="panel-body">
-                <p class="text-muted">Select an employee and financial year to view the consolidated salary and deduction statement.</p>
-                <form id="form16Selection" method="GET" data-base-url="{{ url('/form16') }}" class="row g-3">
+                <p class="text-muted">Select an employee and financial year. Form 16 uses calculated / frozen / approved / locked payrolls.</p>
+                <form method="GET" action="{{ url('/form16/preview') }}" id="form16Selection" class="row g-3">
                     <div class="col-md-7">
                         <label for="employee_id" class="form-label">Employee <span class="text-danger">*</span></label>
-                        <select id="employee_id" class="form-select" required>
+                        <select id="employee_id" name="employee_id" class="form-select" required>
                             <option value="">Select employee</option>
                             @foreach($employees as $employee)
                                 <option value="{{ $employee->id }}">{{ $employee->employee_code }} — {{ $employee->name }}</option>
@@ -28,7 +28,7 @@
                     <div class="col-md-5">
                         <label for="financial_year" class="form-label">Financial Year <span class="text-danger">*</span></label>
                         <select id="financial_year" name="financial_year" class="form-select" required>
-                            @foreach($fyOptions as $option)
+                            @foreach($fyOptions as $key => $option)
                                 <option value="{{ $option }}" @selected($fy === $option)>{{ $option }}</option>
                             @endforeach
                         </select>
@@ -39,6 +39,21 @@
                 </form>
             </div>
         </div>
+
+        <div class="panel mt-3">
+            <div class="panel-header">Quick links</div>
+            <div class="panel-body">
+                <div class="list-group list-group-flush">
+                    @foreach($employees->take(8) as $employee)
+                        <a class="list-group-item list-group-item-action d-flex justify-content-between"
+                           href="{{ route('form16.show', ['employee' => $employee, 'financial_year' => $fy]) }}">
+                            <span>{{ $employee->name }}</span>
+                            <span class="text-muted">{{ $employee->employee_code }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
@@ -46,12 +61,11 @@
 @push('scripts')
 <script>
 document.getElementById('form16Selection').addEventListener('submit', function (event) {
+    event.preventDefault();
     const employeeId = document.getElementById('employee_id').value;
-    if (!employeeId) {
-        event.preventDefault();
-        return;
-    }
-    this.action = this.dataset.baseUrl + '/' + encodeURIComponent(employeeId);
+    const fy = document.getElementById('financial_year').value;
+    if (!employeeId) return;
+    window.location.href = @json(url('/form16')) + '/' + encodeURIComponent(employeeId) + '?financial_year=' + encodeURIComponent(fy);
 });
 </script>
 @endpush

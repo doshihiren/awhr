@@ -114,7 +114,12 @@
                         </div>
                         <button type="submit" class="btn btn-awhr w-100">Sign In <i class="bi bi-arrow-right ms-1"></i></button>
                     </form>
-                    <p class="text-center text-muted small mt-4 mb-0">Authorized access only · AWHR Payroll</p>
+                    <div class="alert alert-light border mt-4 mb-0 small">
+                        <div class="fw-semibold mb-1">Demo logins</div>
+                        <div>Admin: <code>admin@awhr.local</code> / <code>password</code></div>
+                        <div>Employee: <code>rahul@awhr.local</code> / <code>Emp@EMP001</code></div>
+                    </div>
+                    <p class="text-center text-muted small mt-3 mb-0">Authorized access only · AWHR Payroll</p>
                 </section>
             </div>
         </div>

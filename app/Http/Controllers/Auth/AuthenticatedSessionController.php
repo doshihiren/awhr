@@ -28,7 +28,18 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = Auth::user();
+
+        if (!$user->is_active) {
+            Auth::logout();
+            return back()->withErrors(['email' => 'Your account is inactive. Contact admin.']);
+        }
+
+        $home = $user->role === 'employee'
+            ? route('portal.dashboard', absolute: false)
+            : route('dashboard', absolute: false);
+
+        return redirect()->intended($home);
     }
 
     /**

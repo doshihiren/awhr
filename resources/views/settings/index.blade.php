@@ -56,6 +56,15 @@
                         @error('pan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
+                        <label for="office_start_time" class="form-label">Office Start Time</label>
+                        <input id="office_start_time" type="time" name="office_start_time" value="{{ old('office_start_time', substr((string)($company->office_start_time ?? '09:30:00'), 0, 5)) }}" class="form-control">
+                        <small class="text-muted">Used for late mark on check-in</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="late_grace_minutes" class="form-label">Late Grace (minutes)</label>
+                        <input id="late_grace_minutes" type="number" min="0" name="late_grace_minutes" value="{{ old('late_grace_minutes', $company->late_grace_minutes ?? 0) }}" class="form-control">
+                    </div>
+                    <div class="col-md-3">
                         <label for="logo" class="form-label">Company Logo</label>
                         <input id="logo" type="file" name="logo" accept="image/*" class="form-control @error('logo') is-invalid @enderror">
                         @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror

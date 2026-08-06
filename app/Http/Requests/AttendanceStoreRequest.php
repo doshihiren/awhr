@@ -21,6 +21,7 @@ class AttendanceStoreRequest extends FormRequest
             'present_days' => ['required', 'integer', 'min:0', 'max:31'],
             'lop_days' => ['nullable', 'integer', 'min:0', 'max:31'],
             'overtime_days' => ['nullable', 'integer', 'min:0', 'max:31'],
+            'late_days' => ['nullable', 'integer', 'min:0', 'max:31'],
             'remarks' => ['nullable', 'string', 'max:1000'],
         ];
     }

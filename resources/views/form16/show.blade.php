@@ -50,6 +50,13 @@
     </div>
 </div>
 
+@if(empty($data['has_data']))
+    <div class="alert alert-warning">
+        No payroll records found for <strong>{{ $fy }}</strong>.
+        Process payroll (Calculate / Freeze / Approve) for months in this financial year, then reopen Form 16.
+    </div>
+@endif
+
 <div class="panel mb-4">
     <div class="panel-header">Employee & Period Details</div>
     <div class="panel-body">

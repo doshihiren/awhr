@@ -12,12 +12,16 @@ class Company extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'address', 'logo', 'signature', 'email', 'phone', 'gstin', 'pan', 'is_active',
+        'name', 'address', 'logo', 'signature', 'email', 'phone', 'gstin', 'pan',
+        'office_start_time', 'late_grace_minutes', 'is_active',
     ];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'late_grace_minutes' => 'integer',
+        ];
     }
 
     public function employees(): HasMany
