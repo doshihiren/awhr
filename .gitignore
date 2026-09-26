@@ -1,0 +1,30 @@
+# Secrets
+.env
+.env.*
+nodejs/.env
+
+# Dependencies
+node_modules/
+nodejs/node_modules/
+
+# Logs
+*.log
+nodejs/*.log
+
+# Runtime / temp
+tmp/
+temp/
+.cache/
+.DS_Store
+nodejs/tmp/
+
+# Backups / database dumps
+*.zip
+*.tar
+*.tar.gz
+*.sql
+*.bak
+
+# Hostinger marker
+DO_NOT_UPLOAD_HERE
+public_html/.builds/
