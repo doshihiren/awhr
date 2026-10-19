@@ -11,6 +11,8 @@ router.get('/:id/profile', auth(['owner','hr']), async (req, res) => {
        LEFT JOIN employee_details ed ON u.id=ed.user_id
        WHERE u.id=?`, [req.params.id]
     );
+    if (user) delete user.password; // never send the password hash to the browser
+    if (user && req.user.role !== 'owner') { delete user.basic_salary; delete user.hra; delete user.other_allowance; }
     res.json(user);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
