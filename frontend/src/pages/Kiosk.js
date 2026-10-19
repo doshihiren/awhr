@@ -53,7 +53,7 @@ function Setup({ onReady, note }) {
     e.preventDefault(); setBusy(true); setErr('');
     try {
       const { data } = await kioskApi.post('/auth/login', { email: f.email.trim().toLowerCase(), password: f.password });
-      if (!['owner', 'hr'].includes(data.user.role)) throw new Error('Only HR or the owner can set up a kiosk');
+      if (data.user.role !== 'owner') throw new Error('Only the owner can set up a kiosk');
       const r = await kioskApi.post('/face/kiosk/activate', { name: f.name },
         { headers: { Authorization: `Bearer ${data.token}` } });
       localStorage.setItem(TOKEN_KEY, r.data.token);
@@ -68,10 +68,10 @@ function Setup({ onReady, note }) {
         <div style={{ textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center' }}><Logo size={52} /></div>
           <h1 style={{ fontSize: 24, margin: '12px 0 6px' }}>Set up attendance kiosk</h1>
-          <p style={{ color: C.muted, fontSize: 14 }}>HR or the owner signs in once. After that, this device stays in kiosk mode and staff just look at the camera.</p>
+          <p style={{ color: C.muted, fontSize: 14 }}>The owner signs in once. After that, this device stays in kiosk mode and staff just look at the camera.</p>
         </div>
         {err && <div role="alert" style={{ background: `${C.red}1f`, color: C.red, borderRadius: 10, padding: '10px 14px', fontSize: 13 }}>{err}</div>}
-        <label style={lbl}>HR / Owner email<input type="email" required value={f.email} onChange={e => setF({ ...f, email: e.target.value })} /></label>
+        <label style={lbl}>Owner email<input type="email" required value={f.email} onChange={e => setF({ ...f, email: e.target.value })} /></label>
         <label style={lbl}>Password<input type="password" required value={f.password} onChange={e => setF({ ...f, password: e.target.value })} /></label>
         <label style={lbl}>Kiosk name<input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="e.g. Ground floor reception" /></label>
         <Btn type="submit" disabled={busy} style={{ padding: 13 }}>{busy ? 'Setting up…' : 'Start kiosk'}</Btn>
@@ -89,7 +89,7 @@ function Unlock({ onClose, onUnlocked }) {
     e.preventDefault(); setErr('');
     try {
       const { data } = await kioskApi.post('/auth/login', { email: f.email.trim().toLowerCase(), password: f.password });
-      if (!['owner', 'hr'].includes(data.user.role)) throw new Error('Only HR or the owner can exit kiosk mode');
+      if (data.user.role !== 'owner') throw new Error('Only the owner can exit kiosk mode');
       onUnlocked();
     } catch (ex) { setErr(ex.response?.data?.message || ex.message); }
   };
@@ -97,7 +97,7 @@ function Unlock({ onClose, onUnlocked }) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 50, display: 'grid', placeItems: 'center', padding: 16 }}>
       <form onSubmit={submit} style={{ ...panel, display: 'grid', gap: 12 }} className="fade-in">
         <h3 style={{ fontSize: 18 }}>Exit kiosk mode</h3>
-        <p style={{ color: C.muted, fontSize: 13 }}>HR or the owner must sign in. This device will stop taking attendance.</p>
+        <p style={{ color: C.muted, fontSize: 13 }}>The owner must sign in. This device will stop taking attendance.</p>
         {err && <div role="alert" style={{ color: C.red, fontSize: 13 }}>{err}</div>}
         <label style={lbl}>Email<input type="email" required value={f.email} onChange={e => setF({ ...f, email: e.target.value })} /></label>
         <label style={lbl}>Password<input type="password" required value={f.password} onChange={e => setF({ ...f, password: e.target.value })} /></label>
@@ -229,7 +229,7 @@ function Scanner({ device, enrolled, onExit }) {
           </div>
           {enrolled === 0 && (
             <div style={{ background: `${C.yellow}1f`, color: C.yellow, borderRadius: 12, padding: 14, fontSize: 14 }}>
-              No faces are registered yet. HR can register staff from <b>Face Attendance</b> in the Awelion app.
+              No faces are registered yet. The owner can register staff from <b>Face Attendance</b> in the Awelion app.
             </div>
           )}
         </div>
@@ -257,7 +257,7 @@ function Scanner({ device, enrolled, onExit }) {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: FONT_HEAD, fontSize: 18, fontWeight: 700 }}>{rs.title(result.name)}</div>
                   <div style={{ color: C.subtle, fontSize: 14, marginTop: 2 }}>
-                    {result.result === 'unknown' ? 'Please try again, or contact HR to register your face.' : result.message}
+                    {result.result === 'unknown' ? 'Please try again, or ask the office to register your face.' : result.message}
                   </div>
                 </div>
               </div>
@@ -293,7 +293,7 @@ export default function Kiosk() {
       });
   }, [state.step]);
 
-  const exit = useRef(revoked => { localStorage.removeItem(TOKEN_KEY); setState({ step: 'setup', note: revoked ? 'This kiosk was switched off by HR.' : '' }); }).current;
+  const exit = useRef(revoked => { localStorage.removeItem(TOKEN_KEY); setState({ step: 'setup', note: revoked ? 'This kiosk was switched off by the owner.' : '' }); }).current;
 
   if (state.step === 'setup') return <Setup note={state.note} onReady={() => setState({ step: 'check' })} />;
   if (state.step === 'run') return <Scanner device={state.device} enrolled={state.enrolled} onExit={exit} />;

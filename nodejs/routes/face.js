@@ -77,7 +77,7 @@ async function logScan({ device_id, user_id = null, action, distance: dist = nul
 }
 
 // ─── ENROLMENT (HR / Owner) ──────────────────────────────────────────────────
-router.get('/people', auth(['owner','hr']), async (req, res) => {
+router.get('/people', auth(['owner']), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT u.id, u.name, u.role, u.avatar, e.department, e.designation,
@@ -93,7 +93,7 @@ router.get('/people', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/enroll', auth(['owner','hr']), async (req, res) => {
+router.post('/enroll', auth(['owner']), async (req, res) => {
   try {
     const { user_id, descriptors, photo } = req.body;
     if (!user_id) return res.status(400).json({ message: 'Choose an employee' });
@@ -118,7 +118,7 @@ router.post('/enroll', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.delete('/enroll/:userId', auth(['owner','hr']), async (req, res) => {
+router.delete('/enroll/:userId', auth(['owner']), async (req, res) => {
   try {
     await db.query('DELETE FROM face_profiles WHERE user_id=?', [req.params.userId]);
     clearCache();
@@ -127,7 +127,7 @@ router.delete('/enroll/:userId', auth(['owner','hr']), async (req, res) => {
 });
 
 // ─── KIOSK DEVICES (HR / Owner) ──────────────────────────────────────────────
-router.post('/kiosk/activate', auth(['owner','hr']), async (req, res) => {
+router.post('/kiosk/activate', auth(['owner']), async (req, res) => {
   try {
     const name = String(req.body.name || 'Office kiosk').trim().slice(0, 100) || 'Office kiosk';
     const [r] = await db.query('INSERT INTO kiosk_devices (name,created_by) VALUES (?,?)', [name, req.user.id]);
@@ -136,7 +136,7 @@ router.post('/kiosk/activate', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.get('/kiosk/devices', auth(['owner','hr']), async (req, res) => {
+router.get('/kiosk/devices', auth(['owner']), async (req, res) => {
   try {
     const [rows] = await db.query(`SELECT d.*, u.name AS created_by_name FROM kiosk_devices d
       LEFT JOIN users u ON u.id=d.created_by ORDER BY d.is_active DESC, d.id DESC`);
@@ -144,7 +144,7 @@ router.get('/kiosk/devices', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.delete('/kiosk/devices/:id', auth(['owner','hr']), async (req, res) => {
+router.delete('/kiosk/devices/:id', auth(['owner']), async (req, res) => {
   try {
     await db.query('UPDATE kiosk_devices SET is_active=0 WHERE id=?', [req.params.id]);
     res.json({ message: 'Kiosk switched off' });
@@ -152,7 +152,7 @@ router.delete('/kiosk/devices/:id', auth(['owner','hr']), async (req, res) => {
 });
 
 // ─── SCAN LOG (HR / Owner) ───────────────────────────────────────────────────
-router.get('/logs', auth(['owner','hr']), async (req, res) => {
+router.get('/logs', auth(['owner']), async (req, res) => {
   try {
     const date = req.query.date || getIST().date;
     const [rows] = await db.query(`
@@ -166,7 +166,7 @@ router.get('/logs', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.get('/logs/:id/photo', auth(['owner','hr']), async (req, res) => {
+router.get('/logs/:id/photo', auth(['owner']), async (req, res) => {
   try {
     const [[r]] = await db.query('SELECT photo FROM face_scan_logs WHERE id=?', [req.params.id]);
     res.json({ photo: r?.photo || null });

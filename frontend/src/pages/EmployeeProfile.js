@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useParams } from '../lib/router';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import { C } from '../theme';
 import { Btn, Modal, Field, Spinner, Badge } from '../components/UI';
 
 const tabs = ['Personal','Bank & Identity','Employment','Reimbursements'];
 
 export default function EmployeeProfile() {
+  const { user: me } = useAuth();
+  const isOwner = me?.role === 'owner';
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [reimbursements, setReimb] = useState([]);
@@ -124,7 +127,7 @@ export default function EmployeeProfile() {
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
             {[
               ['Joining Date','date_of_joining'],['Probation End','probation_end_date'],
-              ['Basic Salary','basic_salary'],['HRA','hra'],['Other Allowance','other_allowance'],
+              ...(isOwner ? [['Basic Salary','basic_salary'],['HRA','hra'],['Other Allowance','other_allowance']] : []),
               ['Leave Balance','leave_balance'],
             ].map(([label,key])=>(
               <div key={key}>

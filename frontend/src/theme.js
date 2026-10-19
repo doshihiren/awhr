@@ -83,6 +83,12 @@ export const globalCSS = `
     table { display: block; overflow-x: auto; max-width: 100%; }
   }
   @media print {
-    body { background: #fff; }
+    @page { size: A4; margin: 8mm; }
+    body { background: #fff !important; }
+    body > *:not(.print-root) { display: none !important; }
+    .print-root { position: static !important; inset: auto !important; background: #fff !important; padding: 0 !important; overflow: visible !important; }
+    .print-root .print-frame { box-shadow: none !important; border-radius: 0 !important; max-width: none !important; }
+    .payslip-print { max-width: none !important; padding: 0 !important; }
+    .no-print { display: none !important; }
   }
 `;

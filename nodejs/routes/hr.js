@@ -2,6 +2,7 @@ const router = require('express').Router();
 const db     = require('../db/db');
 const auth   = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
+const { getDayStatus } = require('./attendance');
 
 router.get('/employees', auth(['owner','hr']), async (req, res) => {
   try {
@@ -17,14 +18,21 @@ router.get('/employees', auth(['owner','hr']), async (req, res) => {
       WHERE u.role IN ('hr','team')
       ORDER BY u.name
     `);
+    // Salary figures are visible to the owner only
+    if (req.user.role !== 'owner') rows.forEach(r => { delete r.basic_salary; delete r.hra; delete r.other_allowance; });
     res.json(rows);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 router.post('/employees', auth(['owner','hr']), async (req, res) => {
   try {
-    const { name,email,phone,role,department,designation,date_of_joining,basic_salary,hra,other_allowance } = req.body;
+    const { name,email,phone,department,designation,date_of_joining } = req.body;
+    let { role, basic_salary, hra, other_allowance } = req.body;
     if (!name || !email) return res.status(400).json({ message: 'Name and email are required' });
+    if (req.user.role !== 'owner') {           // HR cannot set salary or create owner accounts
+      basic_salary = hra = other_allowance = 0;
+      if (role === 'owner') role = 'team';
+    }
     const hashed  = await bcrypt.hash('password123', 10);
     const initials= name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const [result]= await db.query(
@@ -46,8 +54,18 @@ router.post('/employees', auth(['owner','hr']), async (req, res) => {
 
 router.put('/employees/:id', auth(['owner','hr']), async (req, res) => {
   try {
-    const { name,email,phone,department,designation,date_of_joining,basic_salary,hra,other_allowance,role } = req.body;
+    const { name,email,phone,department,designation,date_of_joining } = req.body;
+    let { basic_salary,hra,other_allowance,role } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
+    const [[target]] = await db.query('SELECT role FROM users WHERE id=?', [req.params.id]);
+    if (!target) return res.status(404).json({ message: 'Employee not found' });
+    if (req.user.role !== 'owner') {
+      // HR cannot see or change salary, and cannot touch owner accounts or promote anyone to owner
+      if (target.role === 'owner') return res.status(403).json({ message: 'Only the owner can edit this account' });
+      if (role === 'owner') role = target.role;
+      const [[cur]] = await db.query('SELECT basic_salary,hra,other_allowance FROM employees WHERE user_id=?', [req.params.id]);
+      basic_salary = cur?.basic_salary || 0; hra = cur?.hra || 0; other_allowance = cur?.other_allowance || 0;
+    }
     await db.query('UPDATE users SET name=?,email=?,phone=?,role=? WHERE id=?',
       [name, (email||'').trim().toLowerCase(), phone||null, role||'team', req.params.id]);
     await db.query(
@@ -85,8 +103,10 @@ router.put('/employees/:id/reset-password', auth(['owner','hr']), async (req, re
     const { new_password } = req.body;
     if (!new_password || String(new_password).length < 6)
       return res.status(400).json({ message: 'Minimum 6 characters required' });
-    const [[u]] = await db.query('SELECT id FROM users WHERE id=?', [req.params.id]);
+    const [[u]] = await db.query('SELECT id,role FROM users WHERE id=?', [req.params.id]);
     if (!u) return res.status(404).json({ message: 'Employee not found' });
+    if (req.user.role !== 'owner' && u.role === 'owner')
+      return res.status(403).json({ message: 'Only the owner can reset the owner password' });
     const hashed = await bcrypt.hash(String(new_password), 10);
     await db.query('UPDATE users SET password=? WHERE id=?', [hashed, req.params.id]);
     res.json({ message: 'Password reset successfully' });
@@ -104,23 +124,28 @@ router.get('/leaves', auth(['owner','hr']), async (req, res) => {
 
 router.post('/leaves', auth(), async (req, res) => {
   try {
-    const { leave_type, from_date, to_date, reason } = req.body;
+    const { from_date, to_date, reason } = req.body;
     if (!from_date || !to_date) return res.status(400).json({ message: 'From and to dates required' });
-    const days = Math.ceil((new Date(to_date)-new Date(from_date))/(1000*60*60*24))+1;
+    if (to_date < from_date) return res.status(400).json({ message: 'To date must be on or after the from date' });
+    // Only working days count as leave (Sundays, off-Saturdays and holidays are skipped)
+    const workDays = [];
+    for (const d = new Date(from_date + 'T00:00:00Z'); d <= new Date(to_date + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)) {
+      const ds = d.toISOString().slice(0, 10);
+      if (await getDayStatus(ds) === 'working') workDays.push(ds);
+      if (workDays.length > 60) return res.status(400).json({ message: 'Leave can be at most 60 days at a time' });
+    }
+    if (!workDays.length) return res.status(400).json({ message: 'Those dates are all holidays — no leave needed' });
+    const days = workDays.length;
     await db.query(
       'INSERT INTO leave_requests (user_id,leave_type,from_date,to_date,days,reason) VALUES (?,?,?,?,?,?)',
-      [req.user.id, leave_type, from_date, to_date, days, reason||null]
+      [req.user.id, 'earned', from_date, to_date, days, reason||null]
     );
-    const d = new Date(from_date);
-    const end = new Date(to_date);
-    while (d <= end) {
-      const dateStr = d.toISOString().split('T')[0];
+    for (const dateStr of workDays) {
       await db.query(
         `INSERT INTO attendance (user_id,date,status,method) VALUES (?,?,'leave','leave_applied')
          ON DUPLICATE KEY UPDATE status='leave',method='leave_applied'`,
         [req.user.id, dateStr]
       );
-      d.setDate(d.getDate()+1);
     }
     res.json({ message:'Leave applied', days });
   } catch (err) { res.status(500).json({ message: err.message }); }
@@ -133,10 +158,8 @@ router.put('/leaves/:id', auth(['owner','hr']), async (req, res) => {
     if (!leave) return res.status(404).json({ message: 'Leave request not found' });
     await db.query('UPDATE leave_requests SET status=?,approved_by=? WHERE id=?',
       [status, req.user.id, req.params.id]);
-    if (status === 'approved') {
-      await db.query('UPDATE employees SET leave_balance=leave_balance-? WHERE user_id=?',
-        [leave.days, leave.user_id]);
-    }
+    // Leave balance is not changed here: leave and absent days are taken from the balance
+    // when the month's salary is calculated (see services/payroll.js).
     if (status === 'rejected') {
       const d = new Date(leave.from_date);
       const end = new Date(leave.to_date);
@@ -152,7 +175,7 @@ router.put('/leaves/:id', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.get('/payroll', auth(['owner','hr']), async (req, res) => {
+router.get('/payroll', auth(['owner']), async (req, res) => {
   const m = req.query.month || new Date().getMonth()+1;
   const y = req.query.year  || new Date().getFullYear();
   const [rows] = await db.query(`
@@ -163,7 +186,7 @@ router.get('/payroll', auth(['owner','hr']), async (req, res) => {
   res.json(rows);
 });
 
-router.post('/payroll/process', auth(['owner','hr']), async (req, res) => {
+router.post('/payroll/process', auth(['owner']), async (req, res) => {
   try {
     const { month, year } = req.body;
     const [emps] = await db.query('SELECT * FROM employees');
@@ -180,9 +203,9 @@ router.post('/payroll/process', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// Leave is now added automatically (+1.5 on the 1st of every month) — kept so old screens don't break.
 router.post('/leaves/accrue', auth(['owner','hr']), async (req, res) => {
-  await db.query('UPDATE employees SET leave_balance=LEAST(leave_balance+1.5,18)');
-  res.json({ message:'+1.5 days accrued' });
+  res.json({ message:'Leave is added automatically on the 1st of every month (+1.5 days).' });
 });
 
 // PEOPLE — for tagging in projects (employees + clients)

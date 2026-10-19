@@ -32,8 +32,7 @@ export default function HRDashboard() {
         </div>
         <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
           <Btn onClick={markAbsent} color={C.red} outline small>⚠ Mark Absent</Btn>
-          <Btn onClick={accrueLeave} color={C.yellow} outline small>+ Accrue 1.5 Leaves</Btn>
-          <Btn onClick={processPayroll} color={C.green} small>Process Payroll</Btn>
+
         </div>
       </div>
 
@@ -44,24 +43,7 @@ export default function HRDashboard() {
         <StatCard label="Pending Leaves" value={leave_requests.filter(l=>l.status==='pending').length} icon="🏖️" color={C.yellow} />
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr',gap:18,marginBottom:22}}>
-        <TableCard title="Payroll Breakdown" badge={<Pill color={C.orange}>{MONTHS[now.getMonth()]} {now.getFullYear()}</Pill>}>
-          {(payroll||[]).length===0&&<div style={{padding:'20px',color:C.muted,fontSize:13,textAlign:'center'}}>No payroll processed yet</div>}
-          {(payroll||[]).map((e,i)=>(
-            <Row key={i} i={i}>
-              <Avatar initials={e.avatar||e.name?.slice(0,2)} size={32} />
-              <div style={{flex:1}}>
-                <div style={{fontWeight:600,fontSize:13}}>{e.name}</div>
-                <div style={{fontSize:11,color:C.muted}}>Basic: ₹{Number(e.basic).toLocaleString()} · HRA: ₹{Number(e.hra).toLocaleString()}</div>
-              </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontWeight:800,color:C.green,fontSize:14}}>₹{Number(e.net_salary).toLocaleString()}</div>
-                <Badge color={e.status==='paid'?C.green:C.orange}>{e.status}</Badge>
-              </div>
-            </Row>
-          ))}
-        </TableCard>
-
+      <div style={{display:'grid',gridTemplateColumns:'1fr',gap:18,marginBottom:22}}>
         <TableCard title="Pending Leave Requests">
           {(leave_requests||[]).filter(l=>l.status==='pending').length===0&&<div style={{padding:'20px',color:C.muted,fontSize:13,textAlign:'center'}}>No pending requests</div>}
           {(leave_requests||[]).filter(l=>l.status==='pending').map((l,i)=>(

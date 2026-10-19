@@ -312,5 +312,6 @@ router.put('/rules/:id', auth(['owner','hr']), async (req, res) => {
 module.exports = router;
 module.exports.getIST = getIST;
 module.exports.doCheckIn = doCheckIn;
+module.exports.getDayStatus = getDayStatus;
 module.exports.doCheckOut = doCheckOut;
 module.exports.AttendanceError = AttendanceError;

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '../lib/router';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import { C } from '../theme';
 import { Btn, Modal, Field, Spinner, Badge, Avatar, ProgressBar, TableCard, Row } from '../components/UI';
 
 export default function HR() {
+  const { user: me } = useAuth();
+  const isOwner = me?.role === 'owner';
   const nav = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -70,7 +73,7 @@ export default function HR() {
       {tab==='employees' && (
         <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,overflow:'hidden'}}>
           <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr 160px',padding:'12px 20px',borderBottom:`1px solid ${C.border}`,fontSize:11,color:C.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px'}}>
-            <span>Employee</span><span>Dept</span><span>Designation</span><span>Salary</span><span>Leave</span><span>Actions</span>
+            <span>Employee</span><span>Dept</span><span>Designation</span><span>{isOwner?'Salary':''}</span><span>Leave</span><span>Actions</span>
           </div>
           {activeEmps.map((e,i)=>(
             <div key={e.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr 160px',padding:'13px 20px',borderBottom:`1px solid ${C.border}22`,alignItems:'center'}}>
@@ -80,7 +83,7 @@ export default function HR() {
               </div>
               <div style={{fontSize:12}}>{e.department||'—'}</div>
               <div style={{fontSize:12}}>{e.designation||'—'}</div>
-              <div style={{fontSize:13,fontWeight:600,color:C.green}}>₹{Number(e.basic_salary||0).toLocaleString()}</div>
+              <div style={{fontSize:13,fontWeight:600,color:C.green}}>{isOwner ? `₹${(Number(e.basic_salary||0)+Number(e.hra||0)+Number(e.other_allowance||0)).toLocaleString('en-IN')}` : ''}</div>
               <div><div style={{fontSize:12,fontWeight:600,color:e.leave_balance>10?C.green:C.orange}}>{e.leave_balance||0} days</div></div>
               <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                 <button onClick={()=>nav(`/employees/${e.id}`)} style={{padding:'4px 8px',borderRadius:5,border:`1px solid ${C.accent}44`,background:`${C.accent}15`,color:C.accent,fontSize:10,fontWeight:700,cursor:'pointer'}}>Profile</button>
@@ -148,9 +151,11 @@ export default function HR() {
               <Field label="Designation"><input value={form.designation} onChange={e=>setForm({...form,designation:e.target.value})} /></Field>
               <Field label="Date of Joining"><input type="date" value={form.date_of_joining} onChange={e=>setForm({...form,date_of_joining:e.target.value})} /></Field>
               <div/>
-              <Field label="Basic Salary (₹)"><input type="number" value={form.basic_salary} onChange={e=>setForm({...form,basic_salary:e.target.value})} /></Field>
-              <Field label="HRA (₹)"><input type="number" value={form.hra} onChange={e=>setForm({...form,hra:e.target.value})} /></Field>
-              <Field label="Other Allowance (₹)"><input type="number" value={form.other_allowance} onChange={e=>setForm({...form,other_allowance:e.target.value})} /></Field>
+              {isOwner && <>
+              <Field label="Basic Salary (₹ / month)"><input type="number" value={form.basic_salary} onChange={e=>setForm({...form,basic_salary:e.target.value})} /></Field>
+              <Field label="HRA (₹ / month)"><input type="number" value={form.hra} onChange={e=>setForm({...form,hra:e.target.value})} /></Field>
+              <Field label="Other Allowance (₹ / month)"><input type="number" value={form.other_allowance} onChange={e=>setForm({...form,other_allowance:e.target.value})} /></Field>
+              </>}
             </div>
             {!editEmp&&<div style={{fontSize:12,color:C.muted,marginTop:10,padding:'8px 12px',background:C.surface,borderRadius:8}}>Default password: <strong>password123</strong></div>}
             <div style={{display:'flex',gap:10,marginTop:16}}>

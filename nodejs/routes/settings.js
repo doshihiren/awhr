@@ -80,8 +80,10 @@ router.put('/users/:id/reset-password', auth(['owner','hr']), async (req, res) =
     const { new_password } = req.body;
     if (!new_password || String(new_password).length < 6)
       return res.status(400).json({ message: 'Min 6 characters' });
-    const [[u]] = await db.query('SELECT id FROM users WHERE id=?', [req.params.id]);
+    const [[u]] = await db.query('SELECT id,role FROM users WHERE id=?', [req.params.id]);
     if (!u) return res.status(404).json({ message: 'User not found' });
+    if (req.user.role !== 'owner' && u.role === 'owner')
+      return res.status(403).json({ message: 'Only the owner can reset the owner password' });
     const hashed = await bcrypt.hash(String(new_password), 10);
     await db.query('UPDATE users SET password=? WHERE id=?', [hashed, req.params.id]);
     res.json({ message: 'Password reset successfully' });

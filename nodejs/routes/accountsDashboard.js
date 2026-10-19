@@ -13,7 +13,7 @@ router.get('/dashboard', auth(['owner','hr']), async (req, res) => {
     const [[collected]] = await db.query(`SELECT COALESCE(SUM(amount_paid),0) as total FROM invoices WHERE MONTH(issue_date)=? AND YEAR(issue_date)=?`,[month,year]);
     const [[outstanding]]= await db.query(`SELECT COALESCE(SUM(balance_due),0) as total FROM invoices WHERE status NOT IN ('paid','cancelled','draft')`);
     const [[exp]]       = await db.query(`SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE status='approved' AND MONTH(date)=? AND YEAR(date)=?`,[month,year]);
-    const [[payroll]]   = await db.query(`SELECT COALESCE(SUM(net_salary),0) as total FROM payroll WHERE month=? AND year=?`,[month,year]);
+    const [[payroll]]   = await db.query(`SELECT COALESCE(SUM(net_pay),0) as total FROM payslips WHERE month=? AND year=?`,[month,year]);
     const [[gst]]       = await db.query(`SELECT COALESCE(SUM(cgst_amount+sgst_amount+igst_amount),0) as total FROM invoices WHERE MONTH(issue_date)=? AND YEAR(issue_date)=? AND status!='cancelled'`,[month,year]);
     const [trend]       = await db.query(`SELECT DATE_FORMAT(issue_date,'%b %Y') as month,SUM(total) as revenue,COUNT(*) as invoice_count FROM invoices WHERE status!='cancelled' AND issue_date>=DATE_SUB(NOW(),INTERVAL 6 MONTH) GROUP BY DATE_FORMAT(issue_date,'%Y-%m'),DATE_FORMAT(issue_date,'%b %Y') ORDER BY MIN(issue_date) ASC`);
     const [topClients]  = await db.query(`SELECT p.name,COALESCE(SUM(i.total),0) as total_billed,COALESCE(SUM(i.amount_paid),0) as total_paid,COALESCE(SUM(i.balance_due),0) as balance_due,COUNT(i.id) as invoice_count FROM parties p LEFT JOIN invoices i ON p.id=i.party_id WHERE p.type='client' GROUP BY p.id,p.name ORDER BY total_billed DESC LIMIT 5`);
@@ -182,7 +182,7 @@ router.post('/cc-statement/:cardId', auth(['owner','hr']), async (req, res) => {
 });
 
 // SALARY SLIPS
-router.get('/salary-slips', auth(['owner','hr']), async (req, res) => {
+router.get('/salary-slips', auth(['owner']), async (req, res) => {
   const m = req.query.month || new Date().getMonth()+1;
   const y = req.query.year  || new Date().getFullYear();
   const [rows] = await db.query(
@@ -193,7 +193,7 @@ router.get('/salary-slips', auth(['owner','hr']), async (req, res) => {
   res.json(rows);
 });
 
-router.get('/salary-slips/:userId/:month/:year', auth(['owner','hr','team']), async (req, res) => {
+router.get('/salary-slips/:userId/:month/:year', auth(['owner']), async (req, res) => {
   try {
     const { userId, month, year } = req.params;
     if (req.user.role==='team' && req.user.id!==parseInt(userId))
@@ -211,7 +211,7 @@ router.get('/salary-slips/:userId/:month/:year', auth(['owner','hr','team']), as
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/salary-slips/generate', auth(['owner','hr']), async (req, res) => {
+router.post('/salary-slips/generate', auth(['owner']), async (req, res) => {
   try {
     const { month, year } = req.body;
     const [emps] = await db.query(`SELECT u.id,e.basic_salary,e.hra,e.other_allowance,ed.is_on_probation,ed.probation_end_date FROM users u JOIN employees e ON u.id=e.user_id LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE u.role IN ('hr','team')`);

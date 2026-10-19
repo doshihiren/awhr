@@ -210,7 +210,7 @@ function Devices({ devices, reload }) {
         <ol style={{ paddingLeft: 20, color: C.subtle, lineHeight: 1.9, fontSize: 14 }}>
           <li>Mount a tablet or phone at the office entrance at face height, plugged into power.</li>
           <li>Open <b style={{ color: C.text }}>{url}</b> in Chrome (Android) or Safari (iPad).</li>
-          <li>Sign in with an HR or owner account and give the kiosk a name, e.g. "Ground floor reception".</li>
+          <li>Sign in with the owner account and give the kiosk a name, e.g. "Ground floor reception".</li>
           <li>Allow camera access. Staff now just look at the screen: first scan = check-in, later scan = check-out.</li>
         </ol>
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>

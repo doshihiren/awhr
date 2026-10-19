@@ -6,6 +6,8 @@ import { Avatar } from './components/UI';
 import useIsMobile from './hooks/useIsMobile';
 import FaceAttendance from './pages/FaceAttendance';
 import Kiosk from './pages/Kiosk';
+import Salary from './pages/Salary';
+import Leave from './pages/Leave';
 import Login from './pages/Login';
 import OwnerDashboard from './pages/OwnerDashboard';
 import HRDashboard from './pages/HRDashboard';
@@ -21,11 +23,10 @@ import Billing from './pages/Billing';
 import AccountsDashboard from './pages/AccountsDashboard';
 import Ledger from './pages/Ledger';
 import BankStatement from './pages/BankStatement';
-import SalarySlips from './pages/SalarySlips';
 import Settings from './pages/Settings';
 import ClientMessages from './pages/ClientMessages';
 import HR from './pages/HR';
-import { Projects, Payroll } from './pages/Modules';
+import { Projects } from './pages/Modules';
 import ProjectForm from './pages/ProjectForm';
 
 function DashboardRouter() {
@@ -96,7 +97,9 @@ export default function App() {
           <Routes>
             <Route path="/login"              element={<Login />} />
             <Route path="/kiosk"              element={<Kiosk />} />
-            <Route path="/face-attendance"    element={<ProtectedLayout roles={['owner','hr']}><FaceAttendance /></ProtectedLayout>} />
+            <Route path="/face-attendance"    element={<ProtectedLayout roles={['owner']}><FaceAttendance /></ProtectedLayout>} />
+            <Route path="/salary"             element={<ProtectedLayout roles={['owner']}><Salary /></ProtectedLayout>} />
+            <Route path="/leave"              element={<ProtectedLayout roles={['owner','hr','team']}><Leave /></ProtectedLayout>} />
             <Route path="/"                   element={<ProtectedLayout><DashboardRouter /></ProtectedLayout>} />
             <Route path="/leads"              element={<ProtectedLayout roles={['owner','hr','team']}><Leads /></ProtectedLayout>} />
             <Route path="/tasks"              element={<ProtectedLayout><Tasks /></ProtectedLayout>} />
@@ -105,7 +108,7 @@ export default function App() {
             <Route path="/projects"           element={<ProtectedLayout><Projects /></ProtectedLayout>} />
             <Route path="/projects/new"       element={<ProtectedLayout roles={['owner','hr']}><ProjectForm /></ProtectedLayout>} />
             <Route path="/projects/edit/:id"  element={<ProtectedLayout><ProjectForm /></ProtectedLayout>} />
-            <Route path="/payroll"            element={<ProtectedLayout roles={['owner','hr']}><Payroll /></ProtectedLayout>} />
+            <Route path="/payroll"            element={<Navigate to="/salary" />} />
             <Route path="/attendance"         element={<ProtectedLayout roles={['owner','hr']}><Attendance /></ProtectedLayout>} />
             <Route path="/my-attendance"      element={<ProtectedLayout><MyAttendance /></ProtectedLayout>} />
             <Route path="/hr"                 element={<ProtectedLayout roles={['owner','hr']}><HR /></ProtectedLayout>} />
@@ -113,7 +116,7 @@ export default function App() {
             <Route path="/accounts"           element={<ProtectedLayout roles={['owner','hr']}><AccountsDashboard /></ProtectedLayout>} />
             <Route path="/ledger"             element={<ProtectedLayout roles={['owner','hr']}><Ledger /></ProtectedLayout>} />
             <Route path="/bank"               element={<ProtectedLayout roles={['owner','hr']}><BankStatement /></ProtectedLayout>} />
-            <Route path="/salary-slips"       element={<ProtectedLayout roles={['owner','hr']}><SalarySlips /></ProtectedLayout>} />
+            <Route path="/salary-slips"       element={<Navigate to="/salary" />} />
             <Route path="/client-messages"    element={<ProtectedLayout roles={['owner','hr']}><ClientMessages /></ProtectedLayout>} />
             <Route path="/settings"           element={<ProtectedLayout><Settings /></ProtectedLayout>} />
             <Route path="/employees/:id"      element={<ProtectedLayout roles={['owner','hr']}><EmployeeProfile /></ProtectedLayout>} />

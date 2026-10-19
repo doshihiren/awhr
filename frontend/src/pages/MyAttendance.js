@@ -24,7 +24,7 @@ export default function MyAttendance() {
   const [loading, setLoading] = useState(true);
   const [checkoutMsg, setCheckoutMsg] = useState('');
   const [leaveModal, setLeaveModal] = useState(false);
-  const [lForm, setLForm] = useState({ leave_type:'PL', from_date:'', to_date:'', reason:'' });
+  const [lForm, setLForm] = useState({ leave_type:'earned', from_date:'', to_date:'', reason:'' });
 
   const load = async () => {
     setLoading(true);
@@ -55,7 +55,7 @@ export default function MyAttendance() {
     try {
       await api.post('/hr/leaves', lForm);
       setLeaveModal(false);
-      setLForm({ leave_type:'PL', from_date:'', to_date:'', reason:'' });
+      setLForm({ leave_type:'earned', from_date:'', to_date:'', reason:'' });
       load(); alert('Leave applied successfully!');
     } catch(e) { alert(e.response?.data?.message || 'Error'); }
   };
@@ -221,13 +221,9 @@ export default function MyAttendance() {
       {/* Leave Modal */}
       {leaveModal && (
         <Modal title="Apply for Leave" onClose={()=>setLeaveModal(false)}>
-          <Field label="Leave Type">
-            <select value={lForm.leave_type} onChange={e=>setLForm({...lForm,leave_type:e.target.value})}>
-              <option value="PL">Privilege Leave (PL)</option>
-              <option value="CL">Casual Leave (CL)</option>
-              <option value="SL">Sick Leave (SL)</option>
-            </select>
-          </Field>
+          <div style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:'10px 14px',fontSize:13,color:C.subtle,marginBottom:14}}>
+            Earned leave · Sundays and holidays in between are not counted. Leave is taken from your balance when the month's salary is calculated.
+          </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <Field label="From Date"><input type="date" value={lForm.from_date} onChange={e=>setLForm({...lForm,from_date:e.target.value})} /></Field>
             <Field label="To Date"><input type="date" value={lForm.to_date} onChange={e=>setLForm({...lForm,to_date:e.target.value})} /></Field>
