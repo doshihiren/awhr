@@ -72,52 +72,61 @@ async function getDayStatus(date) {
   return 'working';
 }
 
+// ─── Shared check-in / check-out logic (used by self check-in and the face kiosk) ──
+class AttendanceError extends Error {}
+
+async function doCheckIn(uid, method = 'self') {
+  const { date, time } = getIST();
+  const dayStatus = await getDayStatus(date);
+  if (dayStatus === 'holiday') throw new AttendanceError('Today is a holiday!');
+
+  // Determine initial status based on check_in time
+  const inMin = timeToMinutes(time);
+  const initialStatus = inMin >= MIDDAY_H * 60 ? 'half_day_first' : 'present';
+
+  await db.query(
+    `INSERT INTO attendance (user_id,date,check_in,status,method) VALUES (?,?,?,?,?)
+     ON DUPLICATE KEY UPDATE check_in=?,status=?,method=?`,
+    [uid, date, time, initialStatus, method, time, initialStatus, method]
+  );
+  const note = initialStatus === 'half_day_first'
+    ? ' (late arrival — First Half marked as leave)'
+    : '';
+  return { message: `Checked in at ${time.slice(0,5)}${note}`, time, date, status: initialStatus };
+}
+
+async function doCheckOut(uid) {
+  const { date, time } = getIST();
+  const [[record]] = await db.query('SELECT * FROM attendance WHERE user_id=? AND date=?', [uid, date]);
+  if (!record?.check_in) throw new AttendanceError('Please check in first');
+  if (record.check_out)  throw new AttendanceError(`Already checked out at ${record.check_out.slice(0,5)}. Check-out is once per day.`);
+
+  const finalStatus = computeStatus(record.check_in, time);
+  await db.query('UPDATE attendance SET check_out=?,status=? WHERE user_id=? AND date=?',
+    [time, finalStatus, uid, date]);
+
+  const msgs = {
+    present:          'Checked out successfully ✅',
+    half_day_first:   'Checked out — First Half leave (late arrival)',
+    half_day_second:  'Checked out — Second Half leave (early departure, worked < 4.5h)',
+    half_day:         'Checked out — Half Day',
+  };
+  return { message: msgs[finalStatus] || 'Checked out', time, status: finalStatus };
+}
+
+const sendErr = (res, err) =>
+  res.status(err instanceof AttendanceError ? 400 : 500).json({ message: err.message });
+
 // ─── CHECK IN ────────────────────────────────────────────────────────────────
 router.post('/checkin', auth(), async (req, res) => {
-  try {
-    const uid = req.user.id;
-    const { date, time } = getIST();
-    const dayStatus = await getDayStatus(date);
-    if (dayStatus === 'holiday') return res.status(400).json({ message: 'Today is a holiday!' });
-
-    // Determine initial status based on check_in time
-    const inMin = timeToMinutes(time);
-    const initialStatus = inMin >= MIDDAY_H * 60 ? 'half_day_first' : 'present';
-
-    await db.query(
-      `INSERT INTO attendance (user_id,date,check_in,status,method) VALUES (?,?,?,?,?)
-       ON DUPLICATE KEY UPDATE check_in=?,status=?,method=?`,
-      [uid, date, time, initialStatus, req.body.method||'self',
-       time, initialStatus, req.body.method||'self']
-    );
-    const note = initialStatus === 'half_day_first'
-      ? ' (late arrival — First Half marked as leave)'
-      : '';
-    res.json({ message: `Checked in at ${time.slice(0,5)}${note}`, time, date, status: initialStatus });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  try { res.json(await doCheckIn(req.user.id, req.body.method || 'self')); }
+  catch (err) { sendErr(res, err); }
 });
 
 // ─── CHECK OUT — once per day, auto-computes half-day type ───────────────────
 router.post('/checkout', auth(), async (req, res) => {
-  try {
-    const uid = req.user.id;
-    const { date, time } = getIST();
-    const [[record]] = await db.query('SELECT * FROM attendance WHERE user_id=? AND date=?', [uid, date]);
-    if (!record?.check_in) return res.status(400).json({ message: 'Please check in first' });
-    if (record.check_out)  return res.status(400).json({ message: `Already checked out at ${record.check_out.slice(0,5)}. Check-out is once per day.` });
-
-    const finalStatus = computeStatus(record.check_in, time);
-    await db.query('UPDATE attendance SET check_out=?,status=? WHERE user_id=? AND date=?',
-      [time, finalStatus, uid, date]);
-
-    const msgs = {
-      present:          'Checked out successfully ✅',
-      half_day_first:   'Checked out — First Half leave (late arrival)',
-      half_day_second:  'Checked out — Second Half leave (early departure, worked < 4.5h)',
-      half_day:         'Checked out — Half Day',
-    };
-    res.json({ message: msgs[finalStatus] || 'Checked out', time, status: finalStatus });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  try { res.json(await doCheckOut(req.user.id)); }
+  catch (err) { sendErr(res, err); }
 });
 
 // ─── TODAY STATUS ────────────────────────────────────────────────────────────
@@ -302,3 +311,6 @@ router.put('/rules/:id', auth(['owner','hr']), async (req, res) => {
 
 module.exports = router;
 module.exports.getIST = getIST;
+module.exports.doCheckIn = doCheckIn;
+module.exports.doCheckOut = doCheckOut;
+module.exports.AttendanceError = AttendanceError;

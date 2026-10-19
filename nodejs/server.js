@@ -20,6 +20,7 @@ app.use("/api/fin", require("./routes/accountsDashboard"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/client", require("./routes/clientPortal"));
 app.use("/api/settings", require("./routes/settings"));
+app.use("/api/face", require("./routes/face"));
 
 const { leadsRouter } = require("./routes/modules");
 app.use("/api/leads", leadsRouter);
@@ -31,5 +32,10 @@ app.get("*", (req, res) =>
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
-  console.log(`✅ Awelion Session 5 running on port ${PORT}`),
+  console.log(`✅ Awelion running on port ${PORT}`),
 );
+
+require("./db/faceSchema")
+  .ensureFaceTables()
+  .then(() => console.log("✅ Face attendance tables ready"))
+  .catch((err) => console.error("⚠️ Could not prepare face attendance tables:", err.message));
