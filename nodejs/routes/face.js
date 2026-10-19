@@ -10,7 +10,7 @@ const router = require('express').Router();
 const jwt    = require('jsonwebtoken');
 const db     = require('../db/db');
 const auth   = require('../middleware/auth');
-const { getIST, doCheckIn, doCheckOut, AttendanceError } = require('./attendance');
+const { getIST, doCheckIn, doCheckOut, doLunchOut, doLunchIn, AttendanceError } = require('./attendance');
 
 const MATCH_THRESHOLD = Number(process.env.FACE_MATCH_THRESHOLD || 0.5); // lower = stricter
 const MATCH_MARGIN    = 0.06;  // best match must beat the next person by this much
@@ -209,20 +209,29 @@ router.post('/kiosk/scan', kioskAuth, async (req, res) => {
 
     const uid = match.user_id;
     const { date, time } = getIST();
-    const [[rec]] = await db.query('SELECT check_in,check_out FROM attendance WHERE user_id=? AND date=?', [uid, date]);
-    let result, out;
+    const [[rec]] = await db.query('SELECT check_in,check_out,lunch_out,lunch_in FROM attendance WHERE user_id=? AND date=?', [uid, date]);
+    let result, out, choice = null;
     try {
       if (!rec?.check_in) {
         out = await doCheckIn(uid, 'face_kiosk');
         result = 'checked_in';
+      } else if (!rec.check_out && rec.lunch_out && !rec.lunch_in) {
+        out = await doLunchIn(uid);                     // back from lunch — no question needed
+        result = 'lunch_in';
       } else if (!rec.check_out) {
-        const since = minutes(time) - minutes(rec.check_in);
+        const since = minutes(time) - minutes(rec.lunch_in || rec.check_in);
         if (since < MIN_GAP_MINUTES) {
           result = 'already_in';
-          out = { message: `Already checked in at ${rec.check_in.slice(0, 5)}`, time: rec.check_in };
+          out = { message: rec.lunch_in ? `Back from lunch at ${rec.lunch_in.slice(0, 5)}` : `Already checked in at ${rec.check_in.slice(0, 5)}`,
+                  time: rec.lunch_in || rec.check_in };
         } else {
-          out = await doCheckOut(uid);
-          result = 'checked_out';
+          // Ask on screen: going for lunch, or leaving for the day?
+          result = 'choose';
+          choice = {
+            options: rec.lunch_out ? ['check_out'] : ['lunch_out', 'check_out'],
+            token: jwt.sign({ kiosk_action: true, uid, device_id: device.id }, kioskSecret(), { expiresIn: '60s' }),
+          };
+          out = { message: 'Choose an option' };
         }
       } else {
         result = 'done';
@@ -234,8 +243,38 @@ router.post('/kiosk/scan', kioskAuth, async (req, res) => {
       out = { message: err.message };
     }
 
+    if (result === 'choose') {
+      req.app.locals.kioskPhotos = req.app.locals.kioskPhotos || new Map();
+      for (const [k, v] of req.app.locals.kioskPhotos) if (Date.now() - v.at > 120000) req.app.locals.kioskPhotos.delete(k);
+      req.app.locals.kioskPhotos.set(uid, { photo, distance: match.distance, at: Date.now() });
+      return res.json({ result, name: match.name, user_id: uid, ...choice });
+    }
     await logScan({ device_id: device.id, user_id: uid, action: result, distance: match.distance, message: out.message, photo });
-    res.json({ result, name: match.name, user_id: uid, message: out.message, time: out.time?.slice(0, 5), status: out.status });
+    res.json({ result, name: match.name, user_id: uid, message: out.message, time: out.time?.slice(0, 5), status: out.status, hours_short: out.hours_short });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// Employee tapped "Lunch out" or "Check out" after being recognised (token valid for 60 s).
+router.post('/kiosk/action', kioskAuth, async (req, res) => {
+  try {
+    let t;
+    try { t = jwt.verify(String(req.body.token || ''), kioskSecret()); } catch { return res.status(400).json({ message: 'Took too long — please scan again' }); }
+    if (!t.kiosk_action || t.device_id !== req.deviceId) return res.status(400).json({ message: 'Please scan again' });
+    const action = req.body.action;
+    if (!['lunch_out', 'check_out'].includes(action)) return res.status(400).json({ message: 'Unknown option' });
+    const [[u]] = await db.query('SELECT name FROM users WHERE id=?', [t.uid]);
+    let result, out;
+    try {
+      if (action === 'lunch_out') { out = await doLunchOut(t.uid); result = 'lunch_out'; }
+      else { out = await doCheckOut(t.uid); result = 'checked_out'; }
+    } catch (err) {
+      if (!(err instanceof AttendanceError)) throw err;
+      result = 'blocked'; out = { message: err.message };
+    }
+    const saved = req.app.locals.kioskPhotos?.get(t.uid);
+    req.app.locals.kioskPhotos?.delete(t.uid);
+    await logScan({ device_id: req.deviceId, user_id: t.uid, action: result, distance: saved?.distance ?? null, message: out.message, photo: saved?.photo || null });
+    res.json({ result, name: u?.name, user_id: t.uid, message: out.message, time: out.time?.slice(0, 5), status: out.status, hours_short: out.hours_short });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

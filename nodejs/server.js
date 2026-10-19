@@ -47,8 +47,9 @@ require("./db/faceSchema")
   .then(() => console.log("✅ Face attendance tables ready"))
   .catch((err) => console.error("⚠️ Could not prepare face attendance tables:", err.message));
 
-require("./db/payrollSchema")
-  .ensurePayrollTables()
+require("./db/attendanceSchema")
+  .ensureAttendanceColumns()
+  .then(() => require("./db/payrollSchema").ensurePayrollTables())
   .then(() => require("./services/leave").ensureOpeningBalances())
   .then(() => {
     console.log("✅ Leave & salary tables ready");

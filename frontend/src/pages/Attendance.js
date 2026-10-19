@@ -1,18 +1,20 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../api';
+import AttendanceReport from '../components/AttendanceReport';
 import { C } from '../theme';
 import { StatCard, Badge, Avatar, Spinner, Btn, Modal, Field, TableCard, Row } from '../components/UI';
 
+const DGRID = '1.8fr 1fr 0.9fr 1fr 0.9fr 0.9fr 90px';
 const STATUS_COLOR = {
   present:C.green, absent:C.red, leave:C.yellow, holiday:C.blue,
   half_day:C.orange, half_day_first:C.orange, half_day_second:C.orange,
 };
 const STATUS_LABEL = {
   present:'Present', absent:'Absent', leave:'On Leave', holiday:'Holiday',
-  half_day:'Half Day', half_day_first:'First Half Leave', half_day_second:'Second Half Leave',
+  half_day:'Half Day', half_day_first:'Half day (after 1 PM)', half_day_second:'Half day (<6h)',
 };
 
-export default function Attendance() {
+function AttendanceDaily() {
   const [date,      setDate]      = useState(new Date().toISOString().split('T')[0]);
   const [records,   setRecords]   = useState([]);
   const [dayStatus, setDayStatus] = useState('working');
@@ -96,13 +98,10 @@ export default function Attendance() {
     alert(`${data.message}${data.skipped?`. ${data.skipped} future dates skipped.`:''}`);
   };
 
-  const filtered = filter==='all' ? records : records.filter(r=>(r.status||'absent')===filter);
-  const counts = {
-    present:  records.filter(r=>r.status==='present').length,
-    half_day: records.filter(r=>r.status==='half_day').length,
-    leave:    records.filter(r=>r.status==='leave').length,
-    absent:   records.filter(r=>r.status==='absent'||!r.status).length,
-  };
+  const norm = st => (st||'absent').startsWith('half_day') ? 'half_day' : (st||'absent');
+  const filtered = filter==='all' ? records : filter==='late' ? records.filter(r=>r.late) : records.filter(r=>norm(r.status)===filter);
+  const counts = { present:0, half_day:0, leave:0, absent:0, late:0 };
+  records.forEach(r => { const k = norm(r.status); if (counts[k] != null) counts[k]++; if (r.late) counts.late++; });
 
   if(loading) return <Spinner />;
 
@@ -111,7 +110,7 @@ export default function Attendance() {
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12}}>
         <div>
           <h1 style={{fontSize:22,fontWeight:800}}>Attendance 📷</h1>
-          <div style={{color:C.muted,fontSize:13,marginTop:3}}>Office hours: 10:00 AM – 7:00 PM · Half Day if &lt; 4.5h worked</div>
+          <div style={{color:C.muted,fontSize:13,marginTop:3}}>Office 10:00 AM – 7:00 PM · Late mark after 10:15 · Half day if &lt; 6 working hours (lunch not counted)</div>
         </div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <input type="date" value={date} max={today} onChange={e=>setDate(e.target.value)} style={{padding:'7px 12px',borderRadius:8,width:'auto'}} />
@@ -132,6 +131,7 @@ export default function Attendance() {
           {key:'half_day',label:'Half Day',value:counts.half_day,color:C.orange,icon:'🕐'},
           {key:'leave',label:'On Leave',value:counts.leave,color:C.yellow,icon:'🌴'},
           {key:'absent',label:'Absent',value:counts.absent,color:C.red,icon:'❌'},
+          {key:'late',label:'Late marks',value:counts.late,color:C.red,icon:'⏰'},
         ].map(s=>(
           <div key={s.key} onClick={()=>setFilter(s.key)} style={{background:C.card,border:`2px solid ${filter===s.key?s.color:C.border}`,borderRadius:14,padding:'14px 16px',cursor:'pointer',transition:'all 0.2s',boxShadow:filter===s.key?`0 0 20px ${s.color}22`:'none'}}>
             <div style={{fontSize:20}}>{s.icon}</div>
@@ -143,8 +143,9 @@ export default function Attendance() {
 
       {/* Legend */}
       <div style={{background:`${C.accent}10`,border:`1px solid ${C.accent}33`,borderRadius:10,padding:'10px 16px',marginBottom:16,fontSize:12,display:'flex',gap:20,flexWrap:'wrap',color:C.muted}}>
-        <span><span style={{color:C.green,fontWeight:700}}>✅ Present</span> — Checked in &amp; worked 4.5h+</span>
-        <span><span style={{color:C.orange,fontWeight:700}}>🕐 Half Day</span> — Checked in but worked &lt;4.5h</span>
+        <span><span style={{color:C.green,fontWeight:700}}>✅ Present</span> — 6h+ worked (lunch excluded)</span>
+        <span><span style={{color:C.orange,fontWeight:700}}>🕐 Half Day</span> — less than 6h worked</span>
+        <span><span style={{color:C.red,fontWeight:700}}>LATE</span> — checked in after 10:15</span>
         <span><span style={{color:C.yellow,fontWeight:700}}>🌴 Leave</span> — Approved leave</span>
         <span><span style={{color:C.red,fontWeight:700}}>❌ Absent</span> — No check-in</span>
       </div>
@@ -152,19 +153,18 @@ export default function Attendance() {
       {/* Attendance Table */}
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,overflow:'hidden',marginBottom:18}}>
        <div style={{overflowX:'auto'}}>
-        <div style={{minWidth:600}}>
-        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr 80px',padding:'12px 20px',borderBottom:`1px solid ${C.border}`,fontSize:11,color:C.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px'}}>
-          <span>Employee</span><span>Status</span><span>Check In</span><span>Check Out</span><span>Hours</span><span>Method</span>
+        <div style={{minWidth:760}}>
+        <div style={{display:'grid',gridTemplateColumns:DGRID,padding:'12px 20px',borderBottom:`1px solid ${C.border}`,fontSize:11,color:C.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px'}}>
+          <span>Employee</span><span>Status</span><span>Check In</span><span>Lunch</span><span>Check Out</span><span>Hours</span><span>Method</span>
         </div>
         {filtered.length===0 && <div style={{padding:30,textAlign:'center',color:C.muted,fontSize:13}}>No records</div>}
         {filtered.map((r,i)=>{
           const status = r.status || 'absent';
           const isAbsent = status === 'absent' || status === 'leave' || status === 'holiday';
-          const hrs = !isAbsent && r.check_in && r.check_out
-            ? ((new Date(`2000-01-01 ${r.check_out}`)-new Date(`2000-01-01 ${r.check_in}`))/3600000).toFixed(1)
-            : null;
+          const mins = r.check_in ? (r.worked_minutes || 0) : null;
+          const hrs = mins != null ? `${Math.floor(mins/60)}h ${String(mins%60).padStart(2,'0')}m` : null;
           return (
-            <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr 80px',padding:'13px 20px',borderBottom:`1px solid ${C.border}22`,alignItems:'center',background:i%2===0?'transparent':`${C.surface}44`}}>
+            <div key={i} style={{display:'grid',gridTemplateColumns:DGRID,padding:'13px 20px',borderBottom:`1px solid ${C.border}22`,alignItems:'center',background:i%2===0?'transparent':`${C.surface}44`}}>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
                 <Avatar initials={r.avatar||r.name?.slice(0,2)} size={32} />
                 <div>
@@ -175,11 +175,18 @@ export default function Attendance() {
               <Badge color={STATUS_COLOR[status]||C.muted}>{STATUS_LABEL[status]||'—'}</Badge>
               <div style={{fontSize:13,fontWeight:500,color:isAbsent?C.muted:(r.check_in?C.green:C.muted)}}>
                 {isAbsent ? '—' : (r.check_in?.slice(0,5) || '—')}
+                {r.late && <span style={{marginLeft:6,fontSize:10,fontWeight:700,color:C.red}}>LATE</span>}
+              </div>
+              <div style={{fontSize:12,color:C.muted}}>
+                {r.lunch_out ? `${r.lunch_out.slice(0,5)}–${r.lunch_in ? r.lunch_in.slice(0,5) : (r.on_lunch ? 'on lunch' : '…')}` : '—'}
               </div>
               <div style={{fontSize:13,fontWeight:500,color:isAbsent?C.muted:(r.check_out?C.orange:C.muted)}}>
                 {isAbsent ? '—' : (r.check_out?.slice(0,5) || '—')}
               </div>
-              <div style={{fontSize:12,color:hrs?C.accent:C.muted}}>{hrs ? `${hrs}h` : '—'}</div>
+              <div style={{fontSize:12,fontWeight:600,color:!hrs?C.muted:r.hours_short?C.orange:r.check_out?C.green:C.accent}}>
+                {hrs || '—'}{r.check_in && !r.check_out && !r.missed_checkout && <span style={{display:'block',fontSize:10,color:C.muted,fontWeight:400}}>working</span>}
+                {r.missed_checkout && <span style={{display:'block',fontSize:10,color:C.orange}}>no check-out</span>}
+              </div>
               <div style={{fontSize:11,color:C.muted}}>{r.method==='face_kiosk'?'🙂 Face kiosk':(r.method?.replace('_',' ')||'—')}</div>
             </div>
           );
@@ -294,6 +301,29 @@ export default function Attendance() {
           </div>
           <Btn onClick={uploadBulk} color={C.green} style={{width:'100%'}}>Import {csvPreview.filter(r=>r.user_id).length} Valid Records</Btn>
         </Modal>
+      )}
+    </div>
+  );
+}
+
+
+// Tabs: today's / any day's view, and the monthly report with Excel download
+export default function Attendance() {
+  const [tab, setTab] = useState('daily');
+  return (
+    <div>
+      <div role="tablist" style={{ display:'flex', gap:6, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:4, width:'fit-content', maxWidth:'100%', marginBottom:18 }}>
+        {[['daily','🗓️ Daily'],['report','📊 Monthly report & download']].map(([k,l]) => (
+          <button key={k} role="tab" aria-selected={tab===k} onClick={()=>setTab(k)} style={{ border:'none', borderRadius:9, padding:'8px 16px', fontSize:14, fontWeight:600, whiteSpace:'nowrap',
+            background: tab===k ? 'rgba(45,212,191,.12)' : 'transparent', color: tab===k ? C.accent : C.muted }}>{l}</button>
+        ))}
+      </div>
+      {tab === 'daily' ? <AttendanceDaily /> : (
+        <>
+          <h1 style={{ marginBottom: 4 }}>Attendance report 📊</h1>
+          <div style={{ color:C.muted, fontSize:13, marginBottom:18 }}>All employees, whole month. Hover a day to see check-in, lunch and check-out times.</div>
+          <AttendanceReport />
+        </>
       )}
     </div>
   );

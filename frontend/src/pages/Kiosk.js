@@ -23,6 +23,8 @@ const RESULT_MS = 3500;
 const RESULT_STYLE = {
   checked_in:  { color: C.green,  title: n => `${greet()}, ${first(n)}!`, icon: '✓' },
   checked_out: { color: C.blue,   title: n => `Bye ${first(n)}, have a great evening!`, icon: '👋' },
+  lunch_out:   { color: C.yellow, title: n => `Enjoy your lunch, ${first(n)}!`, icon: '🍱' },
+  lunch_in:    { color: C.green,  title: n => `Welcome back, ${first(n)}!`, icon: '🍽' },
   already_in:  { color: C.yellow, title: n => `Hi ${first(n)}, you're already in`, icon: 'ℹ' },
   done:        { color: C.yellow, title: n => `Hi ${first(n)}, you're done for today`, icon: 'ℹ' },
   blocked:     { color: C.yellow, title: n => `Hi ${first(n)}`, icon: 'ℹ' },
@@ -121,6 +123,7 @@ function Scanner({ device, enrolled, onExit }) {
   const [result, setResult] = useState(null);
   const [recent, setRecent] = useState([]);
   const [unlock, setUnlock] = useState(false);
+  const [choice, setChoice] = useState(null);
 
   useEffect(() => {
     let stream, stopped = false, timer;
@@ -148,7 +151,17 @@ function Scanner({ device, enrolled, onExit }) {
               if (!repeat) {
                 busy = true;
                 try {
-                  const { data } = await kioskApi.post('/face/kiosk/scan', { descriptor: desc, photo: snapshot(video) });
+                  let { data } = await kioskApi.post('/face/kiosk/scan', { descriptor: desc, photo: snapshot(video) });
+                  if (data.result === 'choose') {
+                    // Ask: lunch or leaving? Wait up to 10 s for a tap.
+                    const picked = await new Promise(resolve => {
+                      const timer = setTimeout(() => resolve(null), 10000);
+                      setChoice({ ...data, pick: a => { clearTimeout(timer); resolve(a); } });
+                    });
+                    setChoice(null);
+                    if (!picked) { last = { desc, at: Date.now(), ms: 3000 }; busy = false; timer = setTimeout(() => loop(fa), 200); return; }
+                    data = (await kioskApi.post('/face/kiosk/action', { token: data.token, action: picked })).data;
+                  }
                   last = { desc, at: Date.now(), ms: data.result === 'unknown' ? 4000 : 15000 };
                   setResult(data);
                   if (data.result !== 'unknown')
@@ -222,7 +235,7 @@ function Scanner({ device, enrolled, onExit }) {
                 <div style={{ flex: 1, fontSize: 14 }}>{r.name}</div>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
                   background: `${(RESULT_STYLE[r.result] || RESULT_STYLE.unknown).color}26`, color: (RESULT_STYLE[r.result] || RESULT_STYLE.unknown).color }}>
-                  {r.result === 'checked_in' ? 'In' : r.result === 'checked_out' ? 'Out' : '—'} {r.time || ''}
+                  {({ checked_in: 'In', checked_out: 'Out', lunch_out: 'Lunch', lunch_in: 'Back' })[r.result] || '—'} {r.time || ''}
                 </span>
               </div>
             ))}
@@ -250,6 +263,18 @@ function Scanner({ device, enrolled, onExit }) {
                 </div>
               </div>
             )}
+            {choice && (
+              <div className="fade-in" style={{ position: 'absolute', left: 12, right: 12, bottom: 12, background: 'rgba(13,17,23,.95)',
+                border: `1px solid ${C.accent}66`, borderRadius: 14, padding: 16 }}>
+                <div style={{ fontFamily: FONT_HEAD, fontSize: 18, fontWeight: 700, marginBottom: 12 }}>Hi {first(choice.name)} — what are you doing?</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {choice.options.includes('lunch_out') && (
+                    <button onClick={() => choice.pick('lunch_out')} style={{ flex: 1, padding: '18px 10px', borderRadius: 12, border: 'none', background: C.yellow, color: C.onAccent, fontSize: 18, fontWeight: 700 }}>🍱 Going for lunch</button>
+                  )}
+                  <button onClick={() => choice.pick('check_out')} style={{ flex: 1, padding: '18px 10px', borderRadius: 12, border: 'none', background: C.blue, color: C.onAccent, fontSize: 18, fontWeight: 700 }}>🏠 Leaving for the day</button>
+                </div>
+              </div>
+            )}
             {rs && (
               <div className="fade-in" style={{ position: 'absolute', left: 12, right: 12, bottom: 12, background: 'rgba(13,17,23,.94)',
                 border: `1px solid ${rs.color}66`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -265,7 +290,7 @@ function Scanner({ device, enrolled, onExit }) {
           </div>
           <div style={{ textAlign: 'center', fontSize: 18, fontWeight: 600, minHeight: 26, color: phase === 'running' ? C.text : C.muted }}>
             {phase === 'loading' && <span style={{ animation: 'pulse 1.2s infinite' }}>{hint}</span>}
-            {phase === 'running' && !rs && hint}
+            {phase === 'running' && !rs && !choice && hint}
           </div>
         </div>
       </div>

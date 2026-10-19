@@ -9,7 +9,7 @@
 // - Professional tax ₹200 when earned gross is ₹12,000 or more (Gujarat). Approved salary advances
 //   set to be recovered in that month are deducted. Owner can add a bonus or other deduction.
 const db = require('../db/db');
-const { getIST, getDayStatus } = require('../routes/attendance');
+const { getIST, getDayStatus, notifyMissedCheckouts } = require('../routes/attendance');
 const leave = require('./leave');
 
 const FIRST_AUTO_PERIOD = process.env.PAYROLL_AUTO_START || '2026-10';
@@ -154,6 +154,7 @@ async function runDue({ force = false } = {}) {
   running = true; lastRun = Date.now();
   try {
     await leave.accrueDue();
+    await notifyMissedCheckouts();
     const { date } = getIST();
     const { month, year } = previousPeriod(date);
     const period = periodOf(month, year);

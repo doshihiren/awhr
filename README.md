@@ -38,6 +38,16 @@ To roll back: copy the backup folder over `nodejs/` and touch `nodejs/tmp/restar
 No new npm packages are needed on the server. The face-attendance database tables
 (`face_profiles`, `kiosk_devices`, `face_scan_logs`) are created automatically when the app starts.
 
+## Attendance rules
+
+- Office 10:00 AM – 7:00 PM. Check-in after **10:15** = late mark (shown to the employee, HR and owner).
+- Working hours = check-out − check-in − lunch break. Less than **6 hours** = half day.
+- Employees have **Lunch out / Back from lunch** buttons on their dashboard; the kiosk asks
+  "Going for lunch / Leaving for the day" on the second scan and treats the next scan as lunch-in.
+- Short hours → in-app notification "Work hours not completed"; a forgotten check-out is notified the next day.
+- HR/Owner: Attendance → *Monthly report & download* (summary and daily log as Excel-ready CSV).
+- Optional `.env`: `ATT_LATE_AFTER=10:15`, `ATT_FULL_DAY_HOURS=6`.
+
 ## Leave & salary (owner only)
 
 - **Leave**: one type, earned leave. +1.5 days is added to every active employee automatically on the
@@ -56,7 +66,7 @@ Optional `.env`: `LEAVE_ACCRUAL_START=2026-11`, `PAYROLL_AUTO_START=2026-10`.
 
 1. **Register faces** — Owner → *Face Attendance* → *Employees* → **Register** (about 5 seconds per person).
 2. **Set up the kiosk** — on a tablet at the entrance open `/kiosk`, sign in once with the owner account, name the kiosk, allow the camera.
-3. **Daily use** — staff look at the tablet. First scan of the day = check-in, a scan 30+ minutes later = check-out.
+3. **Daily use** — staff look at the tablet. First scan of the day = check-in; a later scan asks *Going for lunch* or *Leaving for the day*; after lunch-out the next scan = back from lunch.
    Office-hour rules (late arrival, half day) are the same as normal check-in.
 4. **Review** — *Face Attendance* → *Scan log* shows every scan with a photo; unknown faces are listed too.
    Switch off a lost/stolen tablet in *Kiosks*.

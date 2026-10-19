@@ -4,6 +4,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { C, priorityColors } from '../theme';
 import { StatCard, TableCard, Row, Badge, Pill, ProgressBar, Avatar, Spinner, Btn } from '../components/UI';
+import TodayAttendance from '../components/TodayAttendance';
 import useIsMobile from '../hooks/useIsMobile';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -132,77 +133,19 @@ export default function TeamDashboard() {
           {tasks.length === 0 && <div style={{ padding:20,color:C.muted,textAlign:'center',fontSize:13 }}>No tasks assigned 🎉</div>}
         </TableCard>
 
-        {/* Check In / Check Out */}
-        <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
-          <div style={{ background:C.card,border:`1px solid ${isHoliday?C.yellow+'44':hasCheckedIn?C.green+'44':C.accent+'44'}`,borderRadius:16,padding:'20px 22px',boxShadow:`0 0 24px ${hasCheckedIn?C.green:C.accent}11` }}>
-            <div style={{ fontSize:15,fontWeight:700,marginBottom:14 }}>Today's Attendance</div>
-
-            {isHoliday ? (
-              <div style={{ textAlign:'center',padding:'16px 0' }}>
-                <div style={{ fontSize:36 }}>🎉</div>
-                <div style={{ color:C.yellow,fontWeight:700,marginTop:8 }}>Holiday</div>
-                <div style={{ color:C.muted,fontSize:12,marginTop:4 }}>No attendance required today</div>
-              </div>
-            ) : !hasCheckedIn ? (
-              <div style={{ textAlign:'center',padding:'8px 0' }}>
-                <div style={{ fontSize:36,marginBottom:8 }}>📷</div>
-                <div style={{ color:C.muted,fontSize:13,marginBottom:14 }}>You haven't checked in yet</div>
-                <Btn onClick={checkIn} color={C.green} style={{ width:'100%' }}>
-                  {checkingIn ? '⏳ Checking in...' : '✅ Check In'}
-                </Btn>
-              </div>
-            ) : (
-              <div>
-                <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12 }}>
-                  <div>
-                    <div style={{ fontSize:12,color:C.muted }}>Check In</div>
-                    <div style={{ fontSize:20,fontWeight:800,color:C.green }}>{todayRec?.check_in?.slice(0,5)}</div>
-                  </div>
-                  <div style={{ fontSize:28 }}>→</div>
-                  <div style={{ textAlign:'right' }}>
-                    <div style={{ fontSize:12,color:C.muted }}>Check Out</div>
-                    <div style={{ fontSize:20,fontWeight:800,color:hasCheckedOut?C.orange:C.muted }}>
-                      {hasCheckedOut ? todayRec?.check_out?.slice(0,5) : '—'}
-                    </div>
-                  </div>
-                </div>
-                {(todayRec?.status === 'half_day' || todayRec?.status === 'half_day_first' || todayRec?.status === 'half_day_second') && (
-                  <div style={{ background:`${C.orange}15`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:'8px 12px',fontSize:12,color:C.orange,marginBottom:12 }}>
-                    🕐 {todayRec?.status === 'half_day_first' ? 'First Half Leave (late arrival)' : todayRec?.status === 'half_day_second' ? 'Second Half Leave (early departure)' : 'Half Day'}
-                  </div>
-                )}
-                {!hasCheckedOut ? (
-                  <Btn onClick={checkOut} color={C.orange} style={{ width:'100%' }}>
-                    {checkingOut ? '⏳ Checking out...' : '🚪 Check Out'}
-                  </Btn>
-                ) : (
-                  <div style={{ textAlign:'center',padding:'8px 0',color:C.green,fontSize:13,fontWeight:700 }}>
-                    ✓ Signed off for today
-                  </div>
-                )}
-                <div onClick={() => nav('/my-attendance')} style={{ textAlign:'center',marginTop:10,fontSize:12,color:C.accent,cursor:'pointer',textDecoration:'underline' }}>
-                  View full attendance →
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Check In / Lunch / Check Out — shown first on phones */}
+        <div style={{ display:'flex',flexDirection:'column',gap:16,order:isMobile?-1:0 }}>
+          <TodayAttendance onChange={loadAll} />
 
           {/* Leave Balance — clickable */}
-          <div onClick={() => nav('/my-attendance')} style={{ background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:'20px 22px',cursor:'pointer' }}>
-            <div style={{ fontSize:15,fontWeight:700,marginBottom:14 }}>My Leave Balance <span style={{ fontSize:12,color:C.accent,fontWeight:500 }}>→</span></div>
-            {[
-              { label:'Privilege Leave', available:leaveBalance, total:18, color:C.green },
-              { label:'Casual Leave', available:5, total:6, color:C.accent },
-              { label:'Sick Leave', available:3, total:6, color:C.yellow },
-            ].map((l,i) => (
-              <div key={i} style={{ marginBottom:12 }}>
-                <div style={{ display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3 }}>
-                  <span style={{ color:C.muted }}>{l.label}</span>
-                  <span style={{ color:l.color,fontWeight:700 }}>{l.available} / {l.total} left</span>
-                </div>
-                <ProgressBar pct={(l.available/l.total)*100} color={l.color} />
-              </div>
-            ))}
+          <div onClick={() => nav('/leave')} style={{ background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:20,cursor:'pointer' }}>
+            <div style={{ fontSize:15,fontWeight:600,marginBottom:10 }}>My Leave Balance <span style={{ fontSize:12,color:C.accent,fontWeight:500 }}>→</span></div>
+            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'baseline' }}>
+              <span style={{ color:C.muted,fontSize:13 }}>Earned leave</span>
+              <span style={{ fontSize:22,fontWeight:700,color:C.green }}>{leaveBalance} <span style={{ fontSize:13,color:C.muted,fontWeight:500 }}>days</span></span>
+            </div>
+            <ProgressBar pct={Math.min(100,(leaveBalance/18)*100)} color={C.green} />
+            <div style={{ fontSize:12,color:C.muted,marginTop:8 }}>+1.5 days added on the 1st of every month</div>
           </div>
         </div>
       </div>
