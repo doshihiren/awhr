@@ -11,6 +11,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/dashboard", require("./routes/dashboard"));
 app.use("/api/attendance", require("./routes/attendance"));
 app.use("/api/hr", require("./routes/hr"));
+app.use("/api/hr-preview", require("./routes/hrPreview"));
 app.use("/api/accounts", require("./routes/accounts"));
 app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/projects", require("./routes/projects"));
