@@ -3,7 +3,7 @@
 This branch is a **read-only first increment**, not the completed HR overhaul.
 
 Endpoints (authenticated):
-- `GET /api/hr-preview/historical-leaves` — owner/HR, 36 rows, including 5 ineligible months as null; no matching to live employee IDs.
+- `GET /api/hr-preview/historical-leaves` — owner/HR, 36 rows, including 8 ineligible months as null; no matching to live employee IDs.
 - `POST /api/hr-preview/historical-payroll-preview` — owner only, accepts JSON `{"salary":12000,"leave":3,"paidLeave":1.5,"month":4,"year":2026,"otherDeductions":0}`; returns LOP and net using actual calendar days.
 
 No database schema modifications, employee-role updates, attendance writes, or payroll writes are performed. **Do not interpret these preview results as finalized payroll.**
