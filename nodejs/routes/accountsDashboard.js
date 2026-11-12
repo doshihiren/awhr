@@ -182,7 +182,7 @@ router.post('/cc-statement/:cardId', auth(['owner','hr']), async (req, res) => {
 });
 
 // SALARY SLIPS
-router.get('/salary-slips', auth(['owner','hr']), async (req, res) => {
+router.get('/salary-slips', auth(['owner','admin']), async (req, res) => {
   const m = req.query.month || new Date().getMonth()+1;
   const y = req.query.year  || new Date().getFullYear();
   const [rows] = await db.query(
@@ -193,7 +193,7 @@ router.get('/salary-slips', auth(['owner','hr']), async (req, res) => {
   res.json(rows);
 });
 
-router.get('/salary-slips/:userId/:month/:year', auth(['owner','hr','team']), async (req, res) => {
+router.get('/salary-slips/:userId/:month/:year', auth(['owner','admin']), async (req, res) => {
   try {
     const { userId, month, year } = req.params;
     if (req.user.role==='team' && req.user.id!==parseInt(userId))
@@ -211,7 +211,8 @@ router.get('/salary-slips/:userId/:month/:year', auth(['owner','hr','team']), as
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/salary-slips/generate', auth(['owner','hr']), async (req, res) => {
+router.post('/salary-slips/generate', auth(['owner','admin']), async (req, res) => {
+  return res.status(409).json({message:'Legacy salary-slip generation is disabled pending reviewed payroll finalization.'});
   try {
     const { month, year } = req.body;
     const [emps] = await db.query(`SELECT u.id,e.basic_salary,e.hra,e.other_allowance,ed.is_on_probation,ed.probation_end_date FROM users u JOIN employees e ON u.id=e.user_id LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE u.role IN ('hr','team')`);
