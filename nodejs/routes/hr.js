@@ -22,7 +22,7 @@ router.get('/employees', auth(['owner','admin','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/employees', auth(['owner','admin']), async (req, res) => {
+router.post('/employees', auth(['admin']), async (req, res) => {
   try {
     const { name,email,phone,role,department,designation,date_of_joining,basic_salary,hra,other_allowance } = req.body;
     if (!name || !email) return res.status(400).json({ message: 'Name and email are required' });
@@ -46,7 +46,7 @@ router.post('/employees', auth(['owner','admin']), async (req, res) => {
   }
 });
 
-router.put('/employees/:id', auth(['owner','admin']), async (req, res) => {
+router.put('/employees/:id', auth(['admin']), async (req, res) => {
   try {
     const { name,email,phone,department,designation,date_of_joining,basic_salary,hra,other_allowance,role } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
