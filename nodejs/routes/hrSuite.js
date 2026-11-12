@@ -4,6 +4,7 @@ const db=require('../db/db');
 const auth=require('../middleware/auth');
 const logic=require('../lib/hrLogic');
 const ADMIN=['owner','admin'];
+const ADMIN_WRITE=['admin'];
 const REVIEW=['owner','admin','hr'];
 const todayIST=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
 const timeIST=()=>new Date().toLocaleTimeString('en-GB',{timeZone:'Asia/Kolkata',hour12:false});
@@ -47,7 +48,7 @@ router.get('/session',auth(),asyncRoute(async(req,res)=>{
   res.json({user:roleUser(u),canReview:REVIEW.includes(u.role),canManage:isAdmin(u),payrollRestricted:true});
 }));
 router.get('/staff',auth(REVIEW),asyncRoute(async(req,res)=>res.json(await staff(req.query.archive!=='1'))));
-router.patch('/admin/staff/:id/status',auth(ADMIN),asyncRoute(async(req,res)=>{
+router.patch('/admin/staff/:id/status',auth(ADMIN_WRITE),asyncRoute(async(req,res)=>{
   const uid=Number(req.params.id),status=req.body?.status;
   if(!Number.isInteger(uid)||uid<=0||!['active','resigned'].includes(status))return bad(res,'Select a valid employee and status');
   if(uid===Number(req.user.id))return bad(res,'Cannot archive your own login');
@@ -136,7 +137,7 @@ router.get('/admin/leave-register',auth(ADMIN),asyncRoute(async(req,res)=>{
   const [opening]=await db.query('SELECT * FROM hrx_leave_opening ORDER BY user_id');
   res.json({historical,opening});
 }));
-router.put('/admin/historical-leave',auth(ADMIN),asyncRoute(async(req,res)=>{
+router.put('/admin/historical-leave',auth(ADMIN_WRITE),asyncRoute(async(req,res)=>{
   const {user_id,year=2026,month,eligible=true,total_days,paid_days,note=''}=req.body||{};
   if(!Number.isInteger(Number(user_id))||Number(user_id)<=0||Number(year)!==2026||!Number.isInteger(Number(month))||month<4||month>9)return bad(res,'Select a valid employee and April–September 2026 month');
   const total=eligible?Number(total_days):null,paid=eligible?(paid_days==null?logic.defaultHistoricalPaid(total):Number(paid_days)):null;
@@ -146,13 +147,13 @@ router.put('/admin/historical-leave',auth(ADMIN),asyncRoute(async(req,res)=>{
   try{await conn.beginTransaction();await conn.query(`INSERT INTO hrx_historical_leave(user_id,yr,mon,eligible,total_days,paid_days,lop_days,note,updated_by) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE eligible=VALUES(eligible),total_days=VALUES(total_days),paid_days=VALUES(paid_days),lop_days=VALUES(lop_days),note=VALUES(note),updated_by=VALUES(updated_by)`,[user_id,2026,month,eligible?1:0,total,paid,lop,String(note).slice(0,300),req.user.id]);await audit(conn,req.user.id,user_id,'historical_leave',`2026-${month}`,{eligible,total,paid,lop});await conn.commit();res.json({message:'Historical leave saved',user_id,year,month,eligible,total,paid,lop});}
   catch(e){await conn.rollback();throw e;}finally{conn.release();}
 }));
-router.put('/admin/opening-leave',auth(ADMIN),asyncRoute(async(req,res)=>{
+router.put('/admin/opening-leave',auth(ADMIN_WRITE),asyncRoute(async(req,res)=>{
   const {user_id,balance_days,note=''}=req.body||{},balance=Number(balance_days);
   if(!Number.isInteger(Number(user_id))||user_id<=0||!Number.isFinite(balance)||balance<0||balance>100)return bad(res,'Enter a valid employee and opening balance');
   const conn=await db.getConnection();try{await conn.beginTransaction();await conn.query(`INSERT INTO hrx_leave_opening(user_id,as_of,balance_days,note,updated_by) VALUES (?,'2026-10-01',?,?,?) ON DUPLICATE KEY UPDATE as_of=VALUES(as_of),balance_days=VALUES(balance_days),note=VALUES(note),updated_by=VALUES(updated_by)`,[user_id,balance,String(note).slice(0,300),req.user.id]);await audit(conn,req.user.id,user_id,'opening_leave','2026-10-01',{balance});await conn.commit();res.json({message:'Opening balance saved',balance});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
 }));
 router.get('/admin/salaries',auth(ADMIN),asyncRoute(async(req,res)=>{const [rows]=await db.query('SELECT * FROM hrx_salary_revision ORDER BY user_id,effective_month');res.json(rows);}));
-router.put('/admin/salary',auth(ADMIN),asyncRoute(async(req,res)=>{
+router.put('/admin/salary',auth(ADMIN_WRITE),asyncRoute(async(req,res)=>{
   const {user_id,effective_month,gross_monthly,note=''}=req.body||{},gross=Number(gross_monthly);
   if(!Number.isInteger(Number(user_id))||user_id<=0||!checkMonth(effective_month)||!Number.isFinite(gross)||gross<=0||gross>100000000)return bad(res,'Enter a valid employee, month and salary');
   const conn=await db.getConnection();try{await conn.beginTransaction();await conn.query(`INSERT INTO hrx_salary_revision(user_id,effective_month,gross_monthly,note,updated_by) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE gross_monthly=VALUES(gross_monthly),note=VALUES(note),updated_by=VALUES(updated_by)`,[user_id,effective_month,gross,String(note).slice(0,300),req.user.id]);await audit(conn,req.user.id,user_id,'salary_revision',effective_month,{gross});await conn.commit();res.json({message:'Salary revision saved',user_id,effective_month});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
