@@ -23,7 +23,7 @@ router.get('/dashboard', auth(['owner','hr']), async (req, res) => {
     const [banks]       = await db.query('SELECT * FROM bank_accounts WHERE is_active=1');
     const [[pipeline]]  = await db.query(`SELECT COALESCE(SUM(value),0) as total FROM leads WHERE stage NOT IN ('Won','Lost')`);
     const [[activeProjects]] = await db.query(`SELECT COUNT(*) as count FROM projects WHERE status='active'`);
-    const [[teamSize]]  = await db.query(`SELECT COUNT(*) as count FROM users WHERE role IN ('hr','team')`);
+    const [[teamSize]]  = await db.query(`SELECT COUNT(*) as count FROM users u LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE u.role IN ('hr','team') AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated')`);
 
     const totalExp = parseFloat(exp.total) + parseFloat(payroll.total);
     const profit   = parseFloat(collected.total) - totalExp;
@@ -188,7 +188,7 @@ router.get('/salary-slips', auth(['owner','admin']), async (req, res) => {
   const [rows] = await db.query(
     `SELECT ss.*,u.name,u.avatar,e.department,e.designation FROM salary_slips ss
      JOIN users u ON ss.user_id=u.id JOIN employees e ON e.user_id=u.id
-     WHERE ss.month=? AND ss.year=? ORDER BY u.name`, [m,y]
+     LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE ss.month=? AND ss.year=? AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated') ORDER BY u.name`, [m,y]
   );
   res.json(rows);
 });
