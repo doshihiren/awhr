@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c131a"><title>Awelion HR Workspace</title><link rel="stylesheet" href="/hr-suite/app.css"></head>
+<body>
+<section id="loginScreen" class="login-shell">
+  <form id="loginForm" class="login-panel">
+    <div class="brand"><span class="brand-icon">A</span><span>AWELION <small>HR WORKSPACE</small></span></div>
+    <h1>Welcome back</h1><p class="muted">Sign in with your existing Awelion HR account. This workspace shows live employee records, never demo people.</p>
+    <label>Email address<input name="email" type="email" required autocomplete="username" placeholder="Your work email"></label>
+    <label>Password<input name="password" type="password" required autocomplete="current-password" placeholder="Password"></label>
+    <button class="btn primary full" type="submit">Sign in securely</button>
+    <p id="loginError" class="error" role="alert"></p>
+    <p class="muted tiny">Existing CRM, Leads and Projects remain available in the original ERP.</p>
+  </form>
+</section>
+<div class="shell hidden" id="shell">
+  <aside class="sidebar" id="sidebar"><div class="brand"><span class="brand-icon">A</span><span>AWELION <small>HR WORKSPACE</small></span></div>
+    <p class="nav-caption">WORKSPACE</p><nav id="navigation" aria-label="HR navigation"></nav>
+    <div class="side-bottom"><a href="/" class="nav-link">↗ Open existing ERP</a><button type="button" id="logout" class="nav-link">Sign out</button></div>
+  </aside>
+  <div class="content-shell"><header class="topbar"><button type="button" id="mobileToggle" class="menu-toggle" aria-label="Toggle navigation">☰</button><div><div class="eyebrow">AWELION · FY 2026–27</div><h1 id="pageTitle">Dashboard</h1><p class="muted" id="pageSubtitle">Live data from your HR ERP</p></div><div class="account-tag"><span class="account-avatar" id="avatar">A</span><span><strong id="accountName">Account</strong><small id="accountRole">—</small></span></div></header>
+    <div class="notice" id="notice" role="status" aria-live="polite"></div><main id="view" tabindex="-1"><div class="empty">Loading your workspace…</div></main>
+    <footer class="footer">Awelion HR · Historical payroll remains in draft until Owner/Admin approval · All values shown from the connected database</footer>
+  </div>
+</div>
+<script src="/hr-suite/app.js" defer></script>
+</body></html>
