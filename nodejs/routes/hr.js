@@ -26,7 +26,8 @@ router.post('/employees', auth(['owner','admin']), async (req, res) => {
   try {
     const { name,email,phone,role,department,designation,date_of_joining,basic_salary,hra,other_allowance } = req.body;
     if (!name || !email) return res.status(400).json({ message: 'Name and email are required' });
-    const hashed  = await bcrypt.hash('password123', 10);
+    const temporaryPassword = require('crypto').randomBytes(15).toString('base64url');
+    const hashed = await bcrypt.hash(temporaryPassword, 10);
     const initials= name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const [result]= await db.query(
       'INSERT INTO users (name,email,password,role,avatar,phone) VALUES (?,?,?,?,?,?)',
@@ -38,7 +39,7 @@ router.post('/employees', auth(['owner','admin']), async (req, res) => {
     );
     await db.query('INSERT INTO employee_details (user_id,status) VALUES (?,?) ON DUPLICATE KEY UPDATE status=?',
       [result.insertId,'active','active']);
-    res.json({ message:'Employee added', id:result.insertId });
+    res.json({ message:'Employee created. Share the generated temporary password securely and ask the employee to change it immediately.', id:result.insertId, temporary_password:temporaryPassword });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Email already exists' });
     res.status(500).json({ message: err.message });
