@@ -154,8 +154,9 @@ router.get('/all', auth(['owner','hr']), async (req, res) => {
       SELECT u.id,u.name,u.avatar,u.role,
              a.date,a.check_in,a.check_out,a.status,a.method
       FROM users u
+      LEFT JOIN employee_details ed ON ed.user_id=u.id
       LEFT JOIN attendance a ON u.id=a.user_id AND a.date=?
-      WHERE u.role IN ('hr','team')
+      WHERE u.role IN ('hr','team') AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated')
       ORDER BY u.name
     `, [date]);
     const dayStatus = await getDayStatus(date);
@@ -252,7 +253,7 @@ router.post('/mark-absent', auth(['owner','hr']), async (req, res) => {
     const dayStatus = await getDayStatus(todayIST);
     if (dayStatus === 'holiday') return res.json({ message: 'Holiday — no marking needed' });
     const [users] = await db.query(`
-      SELECT u.id FROM users u WHERE u.role IN ('hr','team')
+      SELECT u.id FROM users u LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE u.role IN ('hr','team') AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated')
       AND u.id NOT IN (SELECT user_id FROM attendance WHERE date=?)
       AND u.id NOT IN (SELECT user_id FROM leave_requests WHERE ? BETWEEN from_date AND to_date AND status='approved')
     `, [todayIST, todayIST]);
