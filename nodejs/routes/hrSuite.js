@@ -158,7 +158,7 @@ router.put('/admin/salary',auth(ADMIN),asyncRoute(async(req,res)=>{
   const conn=await db.getConnection();try{await conn.beginTransaction();await conn.query(`INSERT INTO hrx_salary_revision(user_id,effective_month,gross_monthly,note,updated_by) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE gross_monthly=VALUES(gross_monthly),note=VALUES(note),updated_by=VALUES(updated_by)`,[user_id,effective_month,gross,String(note).slice(0,300),req.user.id]);await audit(conn,req.user.id,user_id,'salary_revision',effective_month,{gross});await conn.commit();res.json({message:'Salary revision saved',user_id,effective_month});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
 }));
 router.get('/admin/payroll-preview',auth(ADMIN),asyncRoute(async(req,res)=>{
-  const {year,month}=ymon(req),people=await staff(),ym=`${year}-${String(month).padStart(2,'0')}-01`;
+  const {year,month}=ymon(req),people=await staff(!(year===2026&&month>=4&&month<=9)),ym=`${year}-${String(month).padStart(2,'0')}-01`;
   const [rates]=await db.query('SELECT user_id,effective_month,gross_monthly FROM hrx_salary_revision WHERE effective_month<=? ORDER BY user_id,effective_month',[ym]);
   const [leaves]=await db.query('SELECT user_id,eligible,total_days,paid_days,lop_days FROM hrx_historical_leave WHERE yr=? AND mon=?',[year,month]);
   const rows=people.map(p=>{
