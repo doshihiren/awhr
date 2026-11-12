@@ -14,7 +14,7 @@ router.get('/employees', auth(['owner','admin','hr']), async (req, res) => {
       FROM users u
       LEFT JOIN employees e ON u.id=e.user_id
       LEFT JOIN employee_details ed ON u.id=ed.user_id
-      WHERE u.role IN ('hr','team')
+      WHERE u.role IN ('hr','team') AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated')
       ORDER BY u.name
     `);
     const safeRows = req.user.role==='hr' ? rows.map(({basic_salary,hra,other_allowance,...rest})=>rest) : rows;
@@ -188,7 +188,7 @@ router.post('/leaves/accrue', auth(['owner','admin']), async (req, res) => {
 // PEOPLE — for tagging in projects (employees + clients)
 router.get('/people', auth(['owner','hr','team']), async (req, res) => {
   try {
-    const [employees] = await db.query(`SELECT id,name,avatar,role FROM users WHERE role IN ('hr','team') ORDER BY name`);
+    const [employees] = await db.query(`SELECT u.id,u.name,u.avatar,u.role FROM users u LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE u.role IN ('hr','team') AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated') ORDER BY u.name`);
     const [clients]   = await db.query(`SELECT id,name,avatar FROM users WHERE role='client' ORDER BY name`);
     res.json({ employees, clients });
   } catch (err) { res.status(500).json({ message: err.message }); }
