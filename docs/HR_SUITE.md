@@ -9,9 +9,9 @@ New features:
 - Employee and HR monthly attendance views, computed net work time (excluding completed lunch intervals), late IN, early OUT, long lunch and short-hours observations.
 - Provisional discipline point summaries; **never automatically fine employees or deduct salary**.
 - Employee profile self-service and percentage completeness (bank changes require a separate Admin verification process before payroll use).
-- Owner/Admin manual historical leave data (Apr–Sep 2026) and 1.5-day paid allowance / LOP; eligibility `NA` retained.
-- Owner/Admin October 1, 2026 opening leave balances; deterministic future earned leave with 1.5 days/month.
-- Effective-dated salary revisions and draft payroll calculations using actual calendar days.
+- Admin-only manual historical leave data (Apr–Sep 2026) and 1.5-day paid allowance / LOP; eligibility `NA` retained.
+- Admin-only October 1, 2026 opening leave balances; deterministic future earned leave with 1.5 days/month.
+- Admin-edited effective-dated salary revisions and Owner/Admin draft payroll calculations using actual calendar days.
 - Owner/Admin-only salary and payroll endpoints in the new suite; existing endpoints require permission hardening before go-live.
 
 ## Not included / not claimed as complete
@@ -53,3 +53,6 @@ node --test nodejs/tests/hrLogic.test.js
 ## Historical leave source (not auto-imported)
 
 Owner-provided historical leave data is **not included in this public repository**. Store the original historical leave records privately and enter them by employee ID through Admin screens. NA means not employed or not eligible. Original May for Vishva (`.1.5`) was normalized to 1.5 days after prior confirmation. Use the internal Admin UI and real employee IDs for import.
+## Access control
+
+Owner may review historical leave, salary revisions and draft payroll. Only Admin may modify historical leave entries, opening balances, salary revisions, and archive status. Employee self-service personal details remain editable by the employee. Before deploying, verify the existing `users.role` column supports an `admin` role and provision an authorized Admin account in staging.
