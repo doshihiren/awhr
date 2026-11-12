@@ -3,7 +3,7 @@ const db     = require('../db/db');
 const auth   = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 
-router.get('/employees', auth(['owner','hr']), async (req, res) => {
+router.get('/employees', auth(['owner','admin','hr']), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT u.id,u.name,u.email,u.role,u.avatar,u.phone,
@@ -17,11 +17,12 @@ router.get('/employees', auth(['owner','hr']), async (req, res) => {
       WHERE u.role IN ('hr','team')
       ORDER BY u.name
     `);
-    res.json(rows);
+    const safeRows = req.user.role==='hr' ? rows.map(({basic_salary,hra,other_allowance,...rest})=>rest) : rows;
+    res.json(safeRows);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/employees', auth(['owner','hr']), async (req, res) => {
+router.post('/employees', auth(['owner','admin']), async (req, res) => {
   try {
     const { name,email,phone,role,department,designation,date_of_joining,basic_salary,hra,other_allowance } = req.body;
     if (!name || !email) return res.status(400).json({ message: 'Name and email are required' });
@@ -44,7 +45,7 @@ router.post('/employees', auth(['owner','hr']), async (req, res) => {
   }
 });
 
-router.put('/employees/:id', auth(['owner','hr']), async (req, res) => {
+router.put('/employees/:id', auth(['owner','admin']), async (req, res) => {
   try {
     const { name,email,phone,department,designation,date_of_joining,basic_salary,hra,other_allowance,role } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
@@ -152,7 +153,7 @@ router.put('/leaves/:id', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.get('/payroll', auth(['owner','hr']), async (req, res) => {
+router.get('/payroll', auth(['owner','admin']), async (req, res) => {
   const m = req.query.month || new Date().getMonth()+1;
   const y = req.query.year  || new Date().getFullYear();
   const [rows] = await db.query(`
@@ -163,7 +164,8 @@ router.get('/payroll', auth(['owner','hr']), async (req, res) => {
   res.json(rows);
 });
 
-router.post('/payroll/process', auth(['owner','hr']), async (req, res) => {
+router.post('/payroll/process', auth(['owner','admin']), async (req, res) => {
+  return res.status(409).json({message:'Legacy payroll processing is disabled pending the reviewed attendance-based payroll implementation.'});
   try {
     const { month, year } = req.body;
     const [emps] = await db.query('SELECT * FROM employees');
@@ -180,7 +182,8 @@ router.post('/payroll/process', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/leaves/accrue', auth(['owner','hr']), async (req, res) => {
+router.post('/leaves/accrue', auth(['owner','admin']), async (req, res) => {
+  return res.status(409).json({message:'Legacy bulk leave accrual is disabled; use the reviewed earned-leave register.'});
   await db.query('UPDATE employees SET leave_balance=LEAST(leave_balance+1.5,18)');
   res.json({ message:'+1.5 days accrued' });
 });
