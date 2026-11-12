@@ -105,52 +105,48 @@ router.get('/leaves', auth(['owner','hr']), async (req, res) => {
 
 router.post('/leaves', auth(), async (req, res) => {
   try {
-    const { leave_type, from_date, to_date, reason } = req.body;
-    if (!from_date || !to_date) return res.status(400).json({ message: 'From and to dates required' });
-    const days = Math.ceil((new Date(to_date)-new Date(from_date))/(1000*60*60*24))+1;
-    await db.query(
-      'INSERT INTO leave_requests (user_id,leave_type,from_date,to_date,days,reason) VALUES (?,?,?,?,?,?)',
-      [req.user.id, leave_type, from_date, to_date, days, reason||null]
-    );
-    const d = new Date(from_date);
-    const end = new Date(to_date);
-    while (d <= end) {
-      const dateStr = d.toISOString().split('T')[0];
-      await db.query(
-        `INSERT INTO attendance (user_id,date,status,method) VALUES (?,?,'leave','leave_applied')
-         ON DUPLICATE KEY UPDATE status='leave',method='leave_applied'`,
-        [req.user.id, dateStr]
-      );
-      d.setDate(d.getDate()+1);
-    }
-    res.json({ message:'Leave applied', days });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+    const { leave_type, from_date, to_date, reason } = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from_date||'') || !/^\d{4}-\d{2}-\d{2}$/.test(to_date||''))
+      return res.status(400).json({message:'Valid start and end dates are required'});
+    const from = new Date(from_date+'T00:00:00Z'), to = new Date(to_date+'T00:00:00Z');
+    const days = Math.round((to-from)/86400000)+1;
+    if(!Number.isFinite(days)||days<1||days>90)
+      return res.status(400).json({message:'Leave date range must be between 1 and 90 days'});
+    await db.query('INSERT INTO leave_requests (user_id,leave_type,from_date,to_date,days,reason) VALUES (?,?,?,?,?,?)',
+      [req.user.id,leave_type,from_date,to_date,days,reason||null]);
+    // Pending requests must NOT overwrite real check-in/check-out attendance.
+    res.json({message:'Leave request submitted for review',days});
+  } catch (err) { res.status(500).json({message:'Unable to submit leave request'}); }
 });
 
-router.put('/leaves/:id', auth(['owner','hr']), async (req, res) => {
+router.put('/leaves/:id', auth(['owner','admin','hr']), async (req, res) => {
+  const status = req.body?.status;
+  if (!['approved','rejected'].includes(status))
+    return res.status(400).json({message:'Select Approve or Reject'});
+  const conn = await db.getConnection();
   try {
-    const { status } = req.body;
-    const [[leave]] = await db.query('SELECT * FROM leave_requests WHERE id=?', [req.params.id]);
-    if (!leave) return res.status(404).json({ message: 'Leave request not found' });
-    await db.query('UPDATE leave_requests SET status=?,approved_by=? WHERE id=?',
-      [status, req.user.id, req.params.id]);
-    if (status === 'approved') {
-      await db.query('UPDATE employees SET leave_balance=leave_balance-? WHERE user_id=?',
-        [leave.days, leave.user_id]);
-    }
-    if (status === 'rejected') {
-      const d = new Date(leave.from_date);
-      const end = new Date(leave.to_date);
-      while (d <= end) {
-        await db.query(
-          `UPDATE attendance SET status='absent' WHERE user_id=? AND date=? AND method='leave_applied'`,
-          [leave.user_id, d.toISOString().split('T')[0]]
-        );
-        d.setDate(d.getDate()+1);
+    await conn.beginTransaction();
+    const [[leave]] = await conn.query('SELECT * FROM leave_requests WHERE id=? FOR UPDATE',[req.params.id]);
+    if (!leave) { await conn.rollback();return res.status(404).json({message:'Leave request not found'}); }
+    if(leave.status!=='pending') { await conn.rollback();return res.status(409).json({message:'Leave already reviewed; refresh to see the latest status'}); }
+    await conn.query('UPDATE leave_requests SET status=?,approved_by=? WHERE id=?',[status,req.user.id,req.params.id]);
+    if(status==='approved'){
+      // This executes once because the pending check is locked in this transaction.
+      await conn.query('UPDATE employees SET leave_balance=leave_balance-? WHERE user_id=?',[leave.days,leave.user_id]);
+      const first=new Date(String(leave.from_date).slice(0,10)+'T00:00:00Z');
+      const last=new Date(String(leave.to_date).slice(0,10)+'T00:00:00Z');
+      for(let d=new Date(first);d<=last;d.setUTCDate(d.getUTCDate()+1)){
+        const day=d.toISOString().slice(0,10);
+        await conn.query("INSERT INTO attendance (user_id,date,status,method) VALUES (?,?,'leave','leave_approved') ON DUPLICATE KEY UPDATE status=IF(check_in IS NULL AND check_out IS NULL,'leave',status),method=IF(check_in IS NULL AND check_out IS NULL,'leave_approved',method)",[leave.user_id,day]);
       }
+    }else{
+      // Remove only old pending placeholders, never real punch records.
+      await conn.query("DELETE FROM attendance WHERE user_id=? AND date>=? AND date<=? AND method='leave_applied' AND check_in IS NULL AND check_out IS NULL",
+        [leave.user_id,leave.from_date,leave.to_date]);
     }
-    res.json({ message:`Leave ${status}` });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+    await conn.commit();res.json({message:'Leave '+status});
+  } catch(err){await conn.rollback();res.status(500).json({message:'Unable to review leave request'});}
+  finally{conn.release();}
 });
 
 router.get('/payroll', auth(['owner','admin']), async (req, res) => {
