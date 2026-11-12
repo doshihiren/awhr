@@ -28,7 +28,7 @@ async function staff(activeOnly=true){
     COALESCE(ed.status,'active') emp_status,ed.resignation_date
     FROM users u LEFT JOIN employees e ON e.user_id=u.id
     LEFT JOIN employee_details ed ON ed.user_id=u.id
-    WHERE u.role IN ('team','hr') ${activeOnly?"AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive')":''}
+    WHERE u.role IN ('team','hr') ${activeOnly?"AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated')":''}
     ORDER BY u.name`);
   return rows;
 }
@@ -88,7 +88,7 @@ router.post('/attendance/punch',auth(),asyncRoute(async(req,res)=>{
   try{
     await conn.beginTransaction();
     const [[employee]]=await conn.query("SELECT status FROM employee_details WHERE user_id=? LIMIT 1",[uid]);
-    if(employee&&['resigned','inactive'].includes(employee.status)){await conn.rollback();return res.status(403).json({message:'Attendance is unavailable for archived employees'});}
+    if(employee&&['resigned','inactive','terminated'].includes(employee.status)){await conn.rollback();return res.status(403).json({message:'Attendance is unavailable for archived employees'});}
     const [[row]]=await conn.query('SELECT check_in,check_out,status FROM attendance WHERE user_id=? AND date=? FOR UPDATE',[uid,d]);
     const [events]=await conn.query('SELECT kind FROM hrx_punch_events WHERE user_id=? AND event_date=? FOR UPDATE',[uid,d]);
     const has=k=>events.some(e=>e.kind===k);
