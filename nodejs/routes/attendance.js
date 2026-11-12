@@ -76,6 +76,9 @@ async function getDayStatus(date) {
 router.post('/checkin', auth(), async (req, res) => {
   try {
     const uid = req.user.id;
+    const [[employment]] = await db.query('SELECT status FROM employee_details WHERE user_id=?',[uid]);
+    if (employment && ['resigned','inactive','terminated'].includes(employment.status))
+      return res.status(403).json({message:'Attendance is disabled for archived employees'});
     const { date, time } = getIST();
     const dayStatus = await getDayStatus(date);
     if (dayStatus === 'holiday') return res.status(400).json({ message: 'Today is a holiday!' });
@@ -101,6 +104,9 @@ router.post('/checkin', auth(), async (req, res) => {
 router.post('/checkout', auth(), async (req, res) => {
   try {
     const uid = req.user.id;
+    const [[employment]] = await db.query('SELECT status FROM employee_details WHERE user_id=?',[uid]);
+    if (employment && ['resigned','inactive','terminated'].includes(employment.status))
+      return res.status(403).json({message:'Attendance is disabled for archived employees'});
     const { date, time } = getIST();
     const [[record]] = await db.query('SELECT * FROM attendance WHERE user_id=? AND date=?', [uid, date]);
     if (!record?.check_in) return res.status(400).json({ message: 'Please check in first' });
