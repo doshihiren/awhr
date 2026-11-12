@@ -23,7 +23,7 @@ router.get('/dashboard', auth(['owner','hr']), async (req, res) => {
     const [banks]       = await db.query('SELECT * FROM bank_accounts WHERE is_active=1');
     const [[pipeline]]  = await db.query(`SELECT COALESCE(SUM(value),0) as total FROM leads WHERE stage NOT IN ('Won','Lost')`);
     const [[activeProjects]] = await db.query(`SELECT COUNT(*) as count FROM projects WHERE status='active'`);
-    const [[teamSize]]  = await db.query(`SELECT COUNT(*) as count FROM users WHERE role IN ('hr','team')`);
+    const [[teamSize]]  = await db.query(`SELECT COUNT(*) as count FROM users u LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE u.role IN ('hr','team') AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated')`);
 
     const totalExp = parseFloat(exp.total) + parseFloat(payroll.total);
     const profit   = parseFloat(collected.total) - totalExp;
@@ -182,18 +182,18 @@ router.post('/cc-statement/:cardId', auth(['owner','hr']), async (req, res) => {
 });
 
 // SALARY SLIPS
-router.get('/salary-slips', auth(['owner','hr']), async (req, res) => {
+router.get('/salary-slips', auth(['owner','admin']), async (req, res) => {
   const m = req.query.month || new Date().getMonth()+1;
   const y = req.query.year  || new Date().getFullYear();
   const [rows] = await db.query(
     `SELECT ss.*,u.name,u.avatar,e.department,e.designation FROM salary_slips ss
      JOIN users u ON ss.user_id=u.id JOIN employees e ON e.user_id=u.id
-     WHERE ss.month=? AND ss.year=? ORDER BY u.name`, [m,y]
+     LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE ss.month=? AND ss.year=? AND COALESCE(ed.status,'active') NOT IN ('resigned','inactive','terminated') ORDER BY u.name`, [m,y]
   );
   res.json(rows);
 });
 
-router.get('/salary-slips/:userId/:month/:year', auth(['owner','hr','team']), async (req, res) => {
+router.get('/salary-slips/:userId/:month/:year', auth(['owner','admin']), async (req, res) => {
   try {
     const { userId, month, year } = req.params;
     if (req.user.role==='team' && req.user.id!==parseInt(userId))
@@ -211,7 +211,8 @@ router.get('/salary-slips/:userId/:month/:year', auth(['owner','hr','team']), as
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/salary-slips/generate', auth(['owner','hr']), async (req, res) => {
+router.post('/salary-slips/generate', auth(['owner','admin']), async (req, res) => {
+  return res.status(409).json({message:'Legacy salary-slip generation is disabled pending reviewed payroll finalization.'});
   try {
     const { month, year } = req.body;
     const [emps] = await db.query(`SELECT u.id,e.basic_salary,e.hra,e.other_allowance,ed.is_on_probation,ed.probation_end_date FROM users u JOIN employees e ON u.id=e.user_id LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE u.role IN ('hr','team')`);

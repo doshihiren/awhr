@@ -1,0 +1,27 @@
+name: HR Suite checks
+on:
+  push:
+    branches: [feature/hr-suite-live-2026-11]
+  pull_request:
+    branches: [main]
+jobs:
+  syntax-and-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check nodejs/server.js
+          node --check nodejs/lib/hrLogic.js
+          node --check nodejs/routes/hrSuite.js
+          node --check nodejs/routes/hr.js
+          node --check nodejs/routes/attendance.js
+          node --check nodejs/routes/dashboard.js
+          node --check nodejs/routes/employees.js
+          node --check nodejs/routes/accountsDashboard.js
+          node --check nodejs/public/hr-suite/app.js
+      - name: HR payroll unit tests
+        run: node --test nodejs/tests/hrLogic.test.js

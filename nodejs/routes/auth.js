@@ -2,6 +2,7 @@ const router  = require('express').Router();
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const db      = require('../db/db');
+const BLOCKED = new Set(['resigned','inactive','terminated']);
 
 router.post('/login', async (req, res) => {
   try {
@@ -9,11 +10,13 @@ router.post('/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
     email = email.trim().toLowerCase();
     password = String(password); // do NOT trim password — spaces could be intentional, but we also never trim on set, so they must match exactly
-    const [rows] = await db.query('SELECT * FROM users WHERE email=?', [email]);
+    const [rows] = await db.query(`SELECT u.*,COALESCE(ed.status,'active') AS employee_status
+      FROM users u LEFT JOIN employee_details ed ON ed.user_id=u.id WHERE u.email=?`, [email]);
     if (!rows.length) return res.status(400).json({ message: 'Invalid credentials' });
     const user  = rows[0];
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ message: 'Invalid credentials' });
+    if (BLOCKED.has(String(user.employee_status).toLowerCase())) return res.status(403).json({message:'This employee account is archived. Contact Admin.'});
     const token = jwt.sign(
       { id:user.id, name:user.name, email:user.email, role:user.role, avatar:user.avatar },
       process.env.JWT_SECRET,

@@ -28,3 +28,13 @@ nodejs/tmp/
 # Hostinger marker
 DO_NOT_UPLOAD_HERE
 public_html/.builds/
+
+# Hostinger SSH keys and credential files
+/connect
+/connect.pub
+**/*.pem
+**/*.p12
+**/*.pfx
+
+# Only reviewed versioned migration SQL may be committed
+!migrations/*.sql

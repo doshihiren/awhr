@@ -3,14 +3,24 @@ const db     = require('../db/db');
 const auth   = require('../middleware/auth');
 
 // GET EMPLOYEE FULL PROFILE
-router.get('/:id/profile', auth(['owner','hr']), async (req, res) => {
+router.get('/:id/profile', auth(['owner','admin','hr']), async (req, res) => {
   try {
     const [[user]] = await db.query(
-      `SELECT u.*,e.*,ed.* FROM users u
-       LEFT JOIN employees e ON u.id=e.user_id
+      `SELECT u.id,u.name,u.email,u.role,u.avatar,u.phone,
+       e.department,e.designation,e.date_of_joining,e.leave_balance,
+       e.basic_salary,e.hra,e.other_allowance,
+       ed.status,ed.date_of_birth,ed.gender,ed.personal_email,
+       ed.address,ed.city,ed.state,ed.pincode,
+       ed.emergency_contact_name,ed.emergency_contact_phone,
+       ed.bank_name,ed.bank_account_number,ed.bank_ifsc
+       FROM users u LEFT JOIN employees e ON u.id=e.user_id
        LEFT JOIN employee_details ed ON u.id=ed.user_id
        WHERE u.id=?`, [req.params.id]
     );
+    if(req.user.role==='hr'&&user){
+      const {basic_salary,hra,other_allowance,bank_account_number,...safe}=user;
+      return res.json(safe);
+    }
     res.json(user);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -91,7 +101,7 @@ router.post('/:id/resign', auth(['owner','hr']), async (req, res) => {
 });
 
 // PROFESSIONAL TAX
-router.get('/pt/:month/:year', auth(['owner','hr']), async (req, res) => {
+router.get('/pt/:month/:year', auth(['owner','admin']), async (req, res) => {
   try {
     const { month, year } = req.params;
     const [emps] = await db.query(
@@ -110,7 +120,7 @@ router.get('/pt/:month/:year', auth(['owner','hr']), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-router.post('/pt/deduct', auth(['owner','hr']), async (req, res) => {
+router.post('/pt/deduct', auth(['owner','admin']), async (req, res) => {
   try {
     const { month, year } = req.body;
     const [emps] = await db.query(
