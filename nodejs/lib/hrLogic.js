@@ -17,11 +17,13 @@ function attendanceSummary(row,events=[],rules={}){
   const lOut=minutes(at('lunch_out')),lIn=minutes(at('lunch_in'));
   const lunch=lOut!==null&&lIn!==null&&lIn>=lOut?lIn-lOut:null;
   const gross=start!==null&&end!==null&&end>=start?end-start:null;
-  const net=gross===null?null:Math.max(0,gross-(lunch||0));
+  const lunchComplete=lOut!==null&&lIn!==null&&lIn>=lOut;
+  const net=gross===null||!lunchComplete?null:Math.max(0,gross-lunch);
   const flags=[];
   if(start!==null&&start>minutes(rules.lateAfter||'10:15'))flags.push({key:'late_in',label:'Late IN',points:2});
   if(end!==null&&end<minutes(rules.earlyBefore||'19:00'))flags.push({key:'early_out',label:'Early OUT',points:2});
   if(lunch!==null&&lunch>Number(rules.maxLunch||45))flags.push({key:'long_lunch',label:'Lunch over 45m',points:1});
+  if(gross!==null&&!lunchComplete)flags.push({key:'missing_lunch',label:'Lunch punches missing',points:0});
   if(net!==null&&net<Number(rules.requiredMinutes||480))flags.push({key:'short_hours',label:'Less than 8h',points:2});
   if(start!==null&&end===null&&row?.date&&row.date<new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'}))flags.push({key:'missing_out',label:'Missing OUT',points:1});
   return {check_in:row?.check_in||null,check_out:row?.check_out||null,lunch_out:at('lunch_out'),lunch_in:at('lunch_in'),lunchMinutes:lunch,netMinutes:net,grossMinutes:gross,flags,possiblePointsLost:flags.reduce((n,x)=>n+x.points,0)};
